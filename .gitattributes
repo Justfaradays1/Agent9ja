@@ -1,0 +1,23 @@
+# Agent9ja Git LFS convention (M000) — locked per architecture §19.1.
+# Rule: LFS ONLY for large/binary source asset types listed below.
+# Small optimized ship files (.png/.jpg/.glb/.mp3/.ogg) stay in regular Git
+# until measured size forces a change. builds/ is ignored, never committed.
+# Verify: `git lfs ls-files` after adding real assets.
+
+# 3D source / interchange binaries
+*.blend filter=lfs diff=lfs merge=lfs -text
+*.fbx filter=lfs diff=lfs merge=lfs -text
+*.ma filter=lfs diff=lfs merge=lfs -text
+*.mb filter=lfs diff=lfs merge=lfs -text
+
+# Large source images (masters, not optimized ship textures)
+*.psd filter=lfs diff=lfs merge=lfs -text
+*.xcf filter=lfs diff=lfs merge=lfs -text
+*.exr filter=lfs diff=lfs merge=lfs -text
+*.tif filter=lfs diff=lfs merge=lfs -text
+*.tiff filter=lfs diff=lfs merge=lfs -text
+
+# Uncompressed audio masters (compressed ship audio stays in Git)
+*.wav filter=lfs diff=lfs merge=lfs -text
+*.aif filter=lfs diff=lfs merge=lfs -text
+*.aiff filter=lfs diff=lfs merge=lfs -text

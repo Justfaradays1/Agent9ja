@@ -1,0 +1,46 @@
+# Agent9ja .gitignore — M000 baseline
+# Intentionally versioned (do NOT ignore): assets/, assets_src/, content/, sim/,
+# game/, tools/, tests/, docs/, *.md, package.json.
+# Intentionally ignored: builds/ (regenerable output, per architecture §6).
+
+# Dependencies
+node_modules/
+
+# Build / output (regenerable; architecture says builds/ is ignored by VCS)
+builds/
+dist/
+out/
+
+# Test artifacts (generated; fixtures under tests/**/fixtures/ ARE committed)
+coverage/
+test-results/
+*.received.*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Secrets / local config (never commit)
+.env
+.env.*
+!.env.example
+
+# Local runtime state (saves created while developing/debugging)
+saves/
+*.local.json
+.agent9ja/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.swp
+*~
+
+# Temp / debug dumps
+tmp/
+*.tmp
+debug-*.json
