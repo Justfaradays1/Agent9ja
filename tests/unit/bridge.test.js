@@ -211,6 +211,19 @@ describe('storage-denied survival: the page must never die on blocked storage (P
     assert.ok(html.includes('__cp1_boot_ok'), 'watchdog present: silent module death becomes a visible message');
     assert.ok(html.includes("addEventListener('error'"), 'watchdog captures the real failure for the next report');
     assert.ok(html.includes('rel="icon"'), 'inline favicon: no noise 404s in the console');
+    // P0 regression: the page is served at document URL `/` while its file
+    // lives at /game/debug/, so a document-relative script src resolves to
+    // a non-served path (the `/app.js` 404 that killed the module). Every
+    // local script src must be root-absolute AND under a served root
+    // (serve-debug.js ROOTS: /game/ /sim/ /content/ /tests/scenario/).
+    const roots = ['/game/', '/sim/', '/content/', '/tests/scenario/'];
+    const srcs = [...html.matchAll(/<script[^>]*src="([^"]+)"[^>]*>/g)].map((m) => m[1])
+      .filter((s) => !/^(https?:|data:)/.test(s));
+    assert.ok(srcs.length > 0, 'local scripts exist to check');
+    for (const s of srcs) {
+      assert.ok(s.startsWith('/'), `script src must be root-absolute, got ${s}`);
+      assert.ok(roots.some((r) => s.startsWith(r)), `script src must be served, got ${s}`);
+    }
   });
 });
 
