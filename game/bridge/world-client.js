@@ -87,6 +87,60 @@ export function humanizeId(id) {
   return String(id).split('_').map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w)).join(' ');
 }
 
+// Integer kobo -> readable naira. Kobo are indivisible in the sim (M003), so
+// the conversion is always exact: no rounding, no ambiguity.
+export function formatKobo(kobo) {
+  if (!Number.isInteger(kobo)) return null;
+  const sign = kobo < 0 ? '-' : '';
+  const abs = Math.abs(kobo);
+  const naira = Math.floor(abs / 100);
+  const rem = abs % 100;
+  const grouped = String(naira).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return rem === 0 ? `${sign}₦${grouped}` : `${sign}₦${grouped}.${String(rem).padStart(2, '0')}`;
+}
+
+// Notification kinds are machine ids; players read labels. Refs stay raw
+// (they are needed to act).
+const KIND_LABELS = {
+  obligation_overdue: 'Overdue debt',
+  obligation_due: 'Debt due',
+  crisis_open: 'Crisis',
+  request_open: 'Request',
+  levy_open: 'Repair bill open',
+};
+export function kindLabel(kind) {
+  return KIND_LABELS[kind] ?? humanizeId(kind);
+}
+
+// Kernel rejection reasons stay intact in the log; the banner gets a
+// presentation-level explanation that never suppresses the diagnostic.
+const REJECTION_NOTES = [
+  [/no_open_levy/, 'There is no open collection right now.'],
+  [/already_paid/, 'That share is already paid.'],
+  [/insufficient_funds/, 'Not enough money in the wallet for that.'],
+  [/underpayment|overpayment/, 'The share is a fixed amount — check the notice.'],
+  [/no_account|no_collector_account/, 'Someone involved has no wallet yet.'],
+  [/unknown_person/, 'Someone involved is not known here.'],
+  [/unknown_place|unknown_anchor|no_route/, 'Nobody walks that way.'],
+  [/already_there/, 'Already there — no need to move.'],
+  [/levy_needs_active_fault/, 'A collection needs an active fault to repair.'],
+  [/levy_already_open/, 'A collection is already open — finish it first.'],
+  [/underfunded_levy/, 'Those shares cannot cover the repair — raise them.'],
+  [/no_relationship/, 'The collector must know everyone asked to pay.'],
+  [/tank_already_full/, 'The tank is already full.'],
+  [/no_fuel/, 'The generator has no fuel — fund a repair bill first.'],
+  [/generator_already_on|generator_already_off/, 'The generator is already like that.'],
+  [/no_belief_to_share|unknown_fact/, 'There is nothing known to share about that.'],
+  [/duplicate/, 'Already done — repeats change nothing.'],
+];
+export function explainRejection(reason) {
+  const text = String(reason ?? '');
+  for (const [re, note] of REJECTION_NOTES) {
+    if (re.test(text)) return note;
+  }
+  return null;
+}
+
 // Applies scenario steps ({send:{cmd_id,type,actor,params}} | {advance:n}).
 // Pure logic shared by the debug UI and Node tests. Advance cmd_ids derive
 // deterministically from a counter so replays are identical.

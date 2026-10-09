@@ -3,7 +3,7 @@
 // crossing is game/bridge: this file never touches authoritative modules
 // directly (boundary-checked). All world changes go through kernel.dispatch;
 // every result, including rejections with reasons, is shown in the log.
-import { bootWorld, applyScenario, scenarioLoadSummary, scenarioFormDefaults, humanizeId } from '../bridge/world-client.js';
+import { bootWorld, applyScenario, scenarioLoadSummary, scenarioFormDefaults, humanizeId, formatKobo, explainRejection, kindLabel } from '../bridge/world-client.js';
 import { createAdapter, platformStorage } from '../bridge/save-adapter.js';
 
 const $ = (id) => document.getElementById(id);
@@ -43,7 +43,10 @@ function send(type, params, actor = 't') {
     if (r.status === 'applied') {
       showResult(true, `${type} applied. See what changed below.`);
     } else {
-      showResult(false, `${type} refused: ${r.reason}`);
+      // Presentation-level explanation first, kernel reason intact after it —
+      // diagnostics are never suppressed, only translated alongside.
+      const note = explainRejection(r.reason);
+      showResult(false, `${type} refused: ${note ? note + ' ' : ''}(${r.reason})`);
     }
     log({ cmd: type, status: r.status, reason: r.reason ?? null, seqs: r.produced ?? r.firstSeq ?? null });
     render();
@@ -74,6 +77,19 @@ async function content() {
   };
 }
 
+// Template texts by id, for rendering static chatter in natural wording.
+// Same file the sim validates against — one source, two readers.
+let chatTextById = {};
+async function ensureChatTexts() {
+  if (Object.keys(chatTextById).length > 0) return;
+  const strings = await (await fetch('/content/strings/chat.json')).json();
+  chatTextById = Object.fromEntries(strings.map((t) => [t.id, t.text]));
+}
+
+function fillTemplate(text, params) {
+  return String(text).replace(/\{([a-z_]+)\}/g, (m, k) => (params[k] === undefined ? m : String(params[k])));
+}
+
 async function makeKernel(seed) {
   const c = await content();
   return bootWorld({ seed, content: c }).kernel;
@@ -82,6 +98,7 @@ async function makeKernel(seed) {
 async function boot(seed) {
   try {
     kernel = await makeKernel(seed);
+    await ensureChatTexts();
     cmdN = 0;
     showResult(true, 'World ready. Load the CP1 scenario to begin, or act freely.');
     log({ status: 'applied', booted: seed });
@@ -154,6 +171,19 @@ function renderSituation(q) {
   $('situation').innerHTML = '<ul>' + lines.map((l) => `<li>${esc(l)}</li>`).join('') + '</ul>';
 }
 
+// Renders a message the way a person would read it: display names, natural
+// DM wording, static chatter text with params filled. Values and facts are
+// never altered — only ids become names and templates become sentences.
+function renderMessage(m, names) {
+  const from = m.from ? esc(names[m.from] ?? m.from) : null;
+  const p = m.params || {};
+  if (m.template === 'tell_fact') return `${from ?? '?'} says about ${esc(humanizeId(p.fact ?? 'something'))}: ${esc(p.asserted ?? '')}`;
+  if (m.template === 'request_help') return `${from ?? '?'} needs help with ${esc(p.topic ?? 'something')}${p.detail ? ' — ' + esc(p.detail) : ''}`;
+  const text = chatTextById[m.template];
+  if (text) return `${from ? from + ': ' : ''}${esc(fillTemplate(text, Object.fromEntries(Object.entries(p).map(([k, v]) => [k, String(v)]))))}`;
+  return `${from ?? '?'}: ${esc(m.template)} ${esc(JSON.stringify(p))}`;
+}
+
 function list(items, fmt) {
   if (!items || items.length === 0) return '<li class="note">none</li>';
   return items.map((x) => `<li>${esc(fmt(x))}</li>`).join('');
@@ -166,30 +196,34 @@ function render() {
   $('clock').textContent = `t=${t.minutes} day ${t.day} phase ${t.phase}`;
   renderSituation(q);
   const w = q.world();
+  const people = ['person_tola', 'npc_musa', 'npc_seyi', 'npc_tobi'].filter((p) => q.person(p));
+  const names = Object.fromEntries(people.map((p) => [p, q.person(p).display ?? p]));
+  const money = (kobo) => formatKobo(kobo) ?? String(kobo);
   $('world').innerHTML = `<ul>
     <li>places: ${esc(w.places.join(', '))}</li>
     ${Object.entries(w.presence).map(([p, v]) => `<li>${esc(p)}: ${esc(v.place)}${v.anchor ? '/' + esc(v.anchor) : ''} — ${esc(v.activity)} (${esc(v.reason)})</li>`).join('')}
     <li>light=${esc(w.resources.light.source)} gen=${w.resources.gen_on ? 'on' : 'off'} fuel_min=${w.resources.fuel_min} water=${w.resources.water}</li>
     <li>fault=${esc(w.fault ? w.fault.id + '@' + w.fault.place : 'none')}</li>
-    <li>levy=${esc(w.levy ? `${w.levy.id} ${w.levy.collected}/${w.levy.per_head}x${w.levy.members.length} due@${w.levy.due_t} paid:${Object.keys(w.levy.paid).join(',')}` : 'none')}</li>
+    <li>repair bill=${esc(w.levy ? `${w.levy.id} ${money(w.levy.collected)} of ${money(w.levy.per_head)} x ${w.levy.members.length} due@${w.levy.due_t} paid:${Object.keys(w.levy.paid).map((m) => names[m] ?? m).join(',')}` : 'none')}</li>
     <li>levy history: ${esc(w.levies_history.map((l) => `${l.id}:${l.status}`).join(', ') || 'none')}</li></ul>`;
-  const people = ['person_tola', 'npc_musa', 'npc_seyi', 'npc_tobi'].filter((p) => q.person(p));
   $('people').innerHTML = '<ul>' + people.map((p) => {
     const where = q.where_is(p);
-    return `<li>${esc(p)}: balance=${q.balance(p)} where=${esc(where ? where.place + '/' + (where.anchor ?? '?') + ' ' + where.activity : 'unplaced')}</li>`;
+    return `<li>${esc(names[p])}: ${money(q.balance(p))} where=${esc(where ? where.place + '/' + (where.anchor ?? '?') + ' ' + where.activity : 'unplaced')}</li>`;
   }).join('') + '</ul>';
-  $('obligations').innerHTML = '<ul>' + list(q.obligations({}), (o) => `${o.id} ${o.kind} ${o.owes}>${o.owed} ${o.amount ?? ''} paid=${o.paid ?? 0} ${o.status} due@${o.due_t}`) + '</ul>';
+  $('obligations').innerHTML = '<ul>' + list(q.obligations({}), (o) => `${o.id} ${o.kind} ${names[o.owes] ?? o.owes} owes ${names[o.owed] ?? o.owed} ${o.amount === undefined ? '' : money(o.amount) + ' '}(paid ${money(o.paid ?? 0)}) ${o.status} due@${o.due_t}`) + '</ul>';
   const threads = q.threads({ status: 'open' });
-  $('threads').innerHTML = '<ul>' + list(threads, (x) => `${x.id} [${(x.tags || []).join(',')}] deadline@${x.deadline_t}`) + '</ul>'
+  const threadTitle = (x) => ((x.tags || []).includes('levy') && x.context?.levy
+    ? `Repair bill ${x.context.levy}` : ((x.tags || []).includes('crisis') ? `Crisis ${x.id}` : humanizeId(x.id)));
+  $('threads').innerHTML = '<ul>' + list(threads, (x) => `${threadTitle(x)} [${(x.tags || []).join(',')}] due@${x.deadline_t}`) + '</ul>'
     + '<ul>' + list(q.situations().slice(0, 8), (s) => (typeof s === 'string' ? s : `${humanizeId(s.id)} [${(s.tags || []).join(', ')}]`)) + '</ul>';
   const chats = q.chats();
   $('chats').innerHTML = '<ul>'
-    + chats.groups.map((g) => `<li><b>${esc(g.id)}</b> [${esc(g.members.join(','))}]<ul>`
-      + g.messages.slice(-8).map((m) => `<li>${esc(m.from ?? 'notice')}: ${esc(m.template)} ${esc(JSON.stringify(m.params))}${m.claims?.length ? ' [claim]' : ''}</li>`).join('') + '</ul></li>').join('')
+    + chats.groups.map((g) => `<li><b>Compound group</b> [${esc(g.members.map((m) => names[m] ?? m).join(', '))}]<ul>`
+      + g.messages.slice(-8).map((m) => `<li>${renderMessage(m, names)}${m.claims?.length ? ' [heard]' : ''}</li>`).join('') + '</ul></li>').join('')
     + chats.dms.map((dm) => `<li><b>${esc(dm.thread)}</b><ul>`
-      + dm.messages.slice(-6).map((m) => `<li>${esc(m.from)}: ${esc(m.template)} ${esc(JSON.stringify(m.params))}</li>`).join('') + '</ul></li>').join('') + '</ul>';
-  $('book').innerHTML = '<ul>' + list(q.book(), (b) => `${b.fact} = ${b.asserted} (said by ${b.speaker}, ${b.origin_id})`) + '</ul>';
-  $('notifications').innerHTML = '<ul>' + list(q.notifications(), (n) => `${n.kind} ref=${n.ref}`) + '</ul>';
+      + dm.messages.slice(-6).map((m) => `<li>${renderMessage(m, names)}</li>`).join('') + '</ul></li>').join('') + '</ul>';
+  $('book').innerHTML = '<ul>' + list(q.book(), (b) => `${b.fact} = ${b.asserted} (heard from ${names[b.speaker] ?? b.speaker})`) + '</ul>';
+  $('notifications').innerHTML = '<ul>' + list(q.notifications(), (n) => `${kindLabel(n.kind)}: ${n.ref}`) + '</ul>';
   $('requests').textContent = 'open requests: ' + q.requests({ status: 'open' }).slice(0, 6).map((r) => r.id).join(', ');
   try {
     $('slots').textContent = 'slots: ' + (adapter ? adapter.slots().join(', ') : '(saving unavailable)');

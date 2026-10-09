@@ -24,6 +24,33 @@ export function validatePersonDef(def) {
       if (typeof t !== 'string' || !TAG_RE.test(t)) return `bad incentive tag: ${t}`;
     }
   }
+  if (def.voice !== undefined) {
+    const verr = validatePersonVoice(def.voice);
+    if (verr) return verr;
+  }
+  return null;
+}
+
+// Voice profiles (relatability batch): writing guidance stored as data, not
+// dialogue. Register is a closed set; `never` lists phrases that character
+// must not say (checked against their templates by validateChatterVoices).
+// Voices describe HOW someone speaks, never new facts: no bios, no traits.
+export const VOICE_REGISTERS = ['warm-firm', 'peer-teasing', 'plain-record', 'respectful-english'];
+
+export function validatePersonVoice(voice) {
+  if (!voice || typeof voice !== 'object' || Array.isArray(voice)) return 'person.voice must be an object';
+  if (!VOICE_REGISTERS.includes(voice.register)) {
+    return `person.voice.register must be one of ${VOICE_REGISTERS.join('|')}`;
+  }
+  if (typeof voice.notes !== 'string' || voice.notes.length === 0 || voice.notes.length > 280) {
+    return 'person.voice.notes must be 1..280 chars of writing guidance';
+  }
+  if (voice.never !== undefined) {
+    if (!Array.isArray(voice.never) || voice.never.length > 12) return 'person.voice.never: array<=12';
+    for (const t of voice.never) {
+      if (typeof t !== 'string' || t.length === 0 || t.length > 60) return 'person.voice.never entries must be 1..60 chars';
+    }
+  }
   return null;
 }
 

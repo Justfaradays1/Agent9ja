@@ -6,6 +6,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createKernel } from '../../sim/kernel/pipeline.js';
 import { createPeople, seedPeople, validatePersonDef } from '../../sim/people/index.js';
+import { validateChatterVoices } from '../../sim/comms/index.js';
 
 const stanceRules = { hysteresis: 5, thresholds: [{ stance: 'Neutral', when: {} }] };
 
@@ -32,6 +33,41 @@ describe('person validation', () => {
     ]) {
       assert.notEqual(validatePersonDef(def), null);
     }
+  });
+  it('voice profiles validate register set, notes bounds, taboo lists', () => {
+    assert.equal(validatePersonDef({ id: 'npc_x', display: 'X', voice: { register: 'warm-firm', notes: 'Plain and accountable.', never: ['idiot'] } }), null);
+    for (const voice of [
+      { register: 'shakespearean', notes: 'x' },
+      { register: 'warm-firm', notes: '' },
+      { register: 'warm-firm', notes: 'x'.repeat(281) },
+      { register: 'warm-firm', notes: 'x', never: ['ok', 4] },
+      'loud',
+    ]) {
+      assert.notEqual(validatePersonDef({ id: 'npc_x', display: 'X', voice }), null);
+    }
+  });
+  it('repo npcs carry voices for every chatter speaker', () => {
+    const dir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'content', 'people');
+    const defs = JSON.parse(readFileSync(join(dir, 'npcs.json'), 'utf8'));
+    const voiced = Object.fromEntries(defs.filter((d) => d.voice).map((d) => [d.id, d.voice]));
+    assert.ok(voiced.npc_musa && voiced.npc_seyi, 'musa and seyi guide the rewritten lines');
+    const chatter = JSON.parse(readFileSync(join(dir, '..', 'rules', 'chatter.json'), 'utf8'));
+    const strings = JSON.parse(readFileSync(join(dir, '..', 'strings', 'chat.json'), 'utf8'));
+    const byId = Object.fromEntries(strings.map((t) => [t.id, t.text]));
+    assert.equal(validateChatterVoices(voiced, chatter, byId), null);
+    assert.match(
+      validateChatterVoices({
+        npc_musa: { register: 'warm-firm', notes: 'x', never: ['sweep'] },
+        npc_seyi: { register: 'peer-teasing', notes: 'x', never: [] },
+      }, chatter, byId),
+      /taboo phrase/,
+      'taboo scan has teeth',
+    );
+    assert.match(
+      validateChatterVoices({}, chatter, byId),
+      /has no voice profile/,
+      'unsigned rules pass, speakers without voices fail',
+    );
   });
 });
 

@@ -1,6 +1,6 @@
 # PROGRESS.md — Agent9ja build log
 
-## YOU ARE HERE → CP1 batch (reload honesty, titles, ask amount, derived defaults) + cp1-start scenario built, re-review pending; Phase 2 needs authorization
+## YOU ARE HERE → Relatability content batch built, browser checkpoint pending; Phase 2 needs authorization
 
 Standing: `docs/ENGINEERING_DOCTRINE.md` (ENFORCED/CONVENTION/WHEN-SERVER/DEFERRED) + `AGENTS.md` §11–14.
 Product: player-led doctrine adopted 2026-10-08 — `docs/PLAYER_RESEARCH.md` is the evidence record, `AGENTS.md` §15 governs; storyboard/prior docs are hypotheses (H1 supported; H2–H4 open into M010; H5 standing constraint).
@@ -162,3 +162,11 @@ Kernel only: IDs, clock+phases, seeded RNG streams, command/event/effect + appli
 - Fix: `tests/scenario/proof-cp1-start.json` (setup-only: register/accounts/rels/routines/group/fault/open levy; distinct ids; replay-proof asserts lock the start: fault active, levy open unpaid, t=480). UI scenario button loads it; proof-m009 untouched.
 - Batch: (1) all-duplicate reloads report "already loaded," partials report counts (pure `scenarioLoadSummary`, tested); (2) situations render humanized titles — storylets carry no title/text fields, so no narrative invented (full writing is Phase 2 content); (3) Ask form gains optional Amount (UI refuses non-integers without dispatching; kernel validation untouched); (4) pay/levy/fault defaults derive from the loaded scenario file (`scenarioFormDefaults`, tested), never hardcoded.
 - Verification: suite green (18 unit, 8 proofs); headless real-handler click-through (load/reload/ask/forms/titles); serve checks. Visual paint remains founder-verified.
+
+## Relatability content batch (2026-10-09, authorized; content + presentation only, zero sim-rule changes)
+- Finding confirmed: 13 templates in one shared voice; no character voice data anywhere (`content/dialogue/` empty, storylets textless, NPCs differ only in hidden incentives).
+- Voices: Musa warm-firm + Seyi peer-teasing profiles in `npcs.json` (register/notes/taboo lists); `validatePersonVoice` (people) + `validateChatterVoices` taboo scan (comms) wired into lint. Templates rewritten per voice (Musa plain+accountable, Seyi situational teasing, notices neutral); debt gossip hearsay-marked with facts unchanged.
+- Everyday: `greet_morning` posts on a memo-matched `SeedFired` (new rule `match` filter — exact scalar match, validated, tested); cp1-start schedules the seed so mornings greet. Quiet by default: no other seed can trigger it.
+- Presentation (debug UI only): display names, natural DM wording, naira formatting (`formatKobo`, exact, tested), rejection explainers alongside intact reasons, "repair bill" wording, readable thread/notification titles. Amounts/facts/claims never altered.
+- Verification: suite green (18 unit incl. voice/match/format/explainer tests, 8 proofs incl. greeting determinism); headless handler run shows voiced lines, greeting posted, book/notifications readable. Paint remains founder-verified.
+- Risks remaining: teasing tolerance + regional mix + writer review still need human answers (open questions in research report); state-reflecting interpolation (amounts inside templates) needs a future explicit mechanism.

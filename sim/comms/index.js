@@ -37,6 +37,19 @@ export function validateChatterRules(rules, templates) {
     if (r.params !== undefined && (typeof r.params !== 'object' || r.params === null || Array.isArray(r.params))) {
       return `chatter[${i}].params must be a plain object`;
     }
+    // Optional exact-match filter on top-level event data (e.g. a greeting
+    // rule that fires only for a seed with a given memo). Scalar values
+    // only; anything else would be logic hiding in content.
+    if (r.match !== undefined) {
+      if (typeof r.match !== 'object' || r.match === null || Array.isArray(r.match)) {
+        return `chatter[${i}].match must be a plain object`;
+      }
+      for (const [k, v] of Object.entries(r.match)) {
+        if (!['string', 'number', 'boolean'].includes(typeof v)) {
+          return `chatter[${i}].match.${k} must be a JSON scalar`;
+        }
+      }
+    }
     // Authored claims only: value AND origin are declared explicitly in
     // content (mirrors mislead false_value). Nothing is inferred, so
     // provenance stays honest.
@@ -46,6 +59,26 @@ export function validateChatterRules(rules, templates) {
       }
       if (!['string', 'number', 'boolean'].includes(typeof r.claim.asserted)) {
         return `chatter[${i}].claim.asserted must be a JSON scalar`;
+      }
+    }
+  }
+  return null;
+}
+
+// Voice consistency: every chatter speaker must have a voice profile, and
+// none of their templates may contain their taboo phrases (case-insensitive).
+// voicesByPerson is a plain {personId: {register, notes, never[]}} map (see
+// sim/people validatePersonVoice); templatesById maps template id -> text.
+export function validateChatterVoices(voicesByPerson, chatter, templatesById) {
+  if (!Array.isArray(chatter)) return 'chatter rules must be an array';
+  for (const [i, r] of chatter.entries()) {
+    if (!r || !r.speaker) continue; // unsigned notices carry no voice
+    const v = voicesByPerson[r.speaker];
+    if (!v) return `chatter[${i}] speaker ${r.speaker} has no voice profile`;
+    for (const taboo of v.never || []) {
+      const text = templatesById[r.template] ?? '';
+      if (text.toLowerCase().includes(String(taboo).toLowerCase())) {
+        return `chatter[${i}] template ${r.template} uses taboo phrase for ${r.speaker}: ${taboo}`;
       }
     }
   }
@@ -229,6 +262,11 @@ export function createComms(kernel, { knowledge, chatter = [], templates = [] })
   // fail closed (no rule → no chatter), never invent content.
   for (const rule of chatter) {
     kernel.on(rule.on_event, (ev) => {
+      if (rule.match) {
+        for (const [k, v] of Object.entries(rule.match)) {
+          if (ev.data[k] !== v) return [];
+        }
+      }
       const speaker = rule.speaker ?? null;
       const all = Object.values(groups);
       // The single in-scope group: the one containing the speaker, else the

@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { bootWorld as bootNodeWorld } from '../../tools/world.js';
 import { saveSlot, loadSlot } from '../../sim/save/index.js';
-import { bootWorld, applyScenario, scenarioLoadSummary, scenarioFormDefaults, humanizeId } from '../../game/bridge/world-client.js';
+import { bootWorld, applyScenario, scenarioLoadSummary, scenarioFormDefaults, humanizeId, formatKobo, explainRejection, kindLabel } from '../../game/bridge/world-client.js';
 import { createAdapter, SCHEMA_VERSION, platformStorage } from '../../game/bridge/save-adapter.js';
 import { sha256Hex } from '../../game/bridge/sha256.js';
 
@@ -249,6 +249,22 @@ describe('scenario presentation helpers: honest reloads, derived defaults, reada
   it('situation titles humanize ids without inventing narrative', () => {
     assert.equal(humanizeId('calm_moment'), 'Calm Moment');
     assert.equal(humanizeId('housing_rent_due'), 'Housing Rent Due');
+  });
+  it('kobo formats to exact naira, never rounded', () => {
+    assert.equal(formatKobo(8000), '₦80');
+    assert.equal(formatKobo(50000), '₦500');
+    assert.equal(formatKobo(4410), '₦44.10');
+    assert.equal(formatKobo(0), '₦0');
+    assert.equal(formatKobo(123456789), '₦1,234,567.89');
+    assert.equal(formatKobo(12.5), null, 'non-integers are not money');
+  });
+  it('rejections explain without suppressing; kinds label for players', () => {
+    assert.equal(explainRejection('no_open_levy: levy is not open'), 'There is no open collection right now.');
+    assert.equal(explainRejection('already_paid: x'), 'That share is already paid.');
+    assert.equal(explainRejection('totally_unknown_reason_xyz'), null, 'unknown reasons stay raw');
+    assert.equal(kindLabel('levy_open'), 'Repair bill open');
+    assert.equal(kindLabel('obligation_overdue'), 'Overdue debt');
+    assert.equal(kindLabel('mystery_kind'), 'Mystery Kind');
   });
   it('ask form carries an optional amount input', () => {
     const html = readFileSync(join(ROOT, 'game/debug/index.html'), 'utf8');

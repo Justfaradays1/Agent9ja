@@ -102,6 +102,28 @@ describe('compound group: open, witness, bounds', () => {
     k.dispatch({ cmd_id: 'cmd_advx', type: 'advance_time', actor: 't', params: { steps: 5 } });
     assert.equal(k.query().chats().groups[0].messages.length, 0);
   });
+
+  it('match filters fire only on matching event data', () => {
+    const k = world('match-seed', [
+      { on_event: 'ObligationBroken', template: 'debt_broke', speaker: 'npc_musa', params: {}, match: { kind: 'Debt' } },
+    ]);
+    openCompound(k);
+    breakDebt(k, 'mm1');
+    k.dispatch({ cmd_id: 'cmd_advm', type: 'advance_time', actor: 't', params: { steps: 10 } });
+    assert.equal(k.query().chats().groups[0].messages.length, 1, 'Debt break matches kind Debt');
+  });
+
+  it('match rejects non-matching data and validates shape', () => {
+    assert.match(validateChatterRules([{ on_event: 'X', template: 'tell_fact', match: [1] }], ['tell_fact']), /match must be a plain object/);
+    assert.match(validateChatterRules([{ on_event: 'X', template: 'tell_fact', match: { a: {} } }], ['tell_fact']), /must be a JSON scalar/);
+    const k = world('match2-seed', [
+      { on_event: 'ObligationBroken', template: 'debt_broke', speaker: 'npc_musa', params: {}, match: { kind: 'Favour' } },
+    ]);
+    openCompound(k);
+    breakDebt(k, 'mm2');
+    k.dispatch({ cmd_id: 'cmd_advm2', type: 'advance_time', actor: 't', params: { steps: 10 } });
+    assert.equal(k.query().chats().groups[0].messages.length, 0, 'Debt break does not match kind Favour');
+  });
 });
 
 describe('DMs: tell, request, drafts', () => {

@@ -8,8 +8,9 @@ import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GATE_READS } from '../sim/memory/index.js';
 import { validateStoryContent } from '../sim/story/index.js';
-import { validateChatterRules } from '../sim/comms/index.js';
+import { validateChatterRules, validateChatterVoices } from '../sim/comms/index.js';
 import { validatePlaces, validateRoutines, validateWorldRules } from '../sim/world/index.js';
+import { validatePersonDef } from '../sim/people/index.js';
 
 const failures = [];
 let jsonCount = 0;
@@ -63,6 +64,35 @@ try {
   if (cerr) failures.push(`chatter content: ${cerr}`);
 } catch (err) {
   failures.push(`chatter content unreadable: ${err.message}`);
+}
+
+// Voice profiles + chatter voice consistency: every chatter speaker needs a
+// voice, and none of their templates may carry their taboo phrases.
+let chatIds = [];
+let chatter = [];
+try {
+  const templates = JSON.parse(readFileSync(new URL('../content/strings/chat.json', import.meta.url), 'utf8'));
+  chatIds = templates.map((t) => t.id);
+  chatter = JSON.parse(readFileSync(new URL('../content/rules/chatter.json', import.meta.url), 'utf8'));
+  const cerr = validateChatterRules(chatter, chatIds);
+  if (cerr) failures.push(`chatter content: ${cerr}`);
+} catch (err) {
+  failures.push(`chatter content unreadable: ${err.message}`);
+}
+try {
+  const npcs = JSON.parse(readFileSync(new URL('../content/people/npcs.json', import.meta.url), 'utf8'));
+  for (const [i, d] of npcs.entries()) {
+    const perr = validatePersonDef(d);
+    if (perr) failures.push(`npcs[${i}]: ${perr}`);
+  }
+  const templates = JSON.parse(readFileSync(new URL('../content/strings/chat.json', import.meta.url), 'utf8'));
+  const byId = Object.fromEntries(templates.map((t) => [t.id, t.text]));
+  const voices = {};
+  for (const d of npcs) if (d.voice) voices[d.id] = d.voice;
+  const verr = validateChatterVoices(voices, chatter, byId);
+  if (verr) failures.push(`chatter voices: ${verr}`);
+} catch (err) {
+  failures.push(`npc content unreadable: ${err.message}`);
 }
 
 // Places + routines + world rules: broken geography or unwalkable routine
