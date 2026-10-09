@@ -94,6 +94,58 @@ comments/stats; press-mediated items flagged; hypotheses tracked at the bottom.*
 - Implication: SUPPORTS milestone order (consequence engine before content
   breadth) and the M010 proof gate. Do not answer boredom with map/features.
 
+## R-007 — Lagos Life messaging: observed design (2026-10-09)
+- Sources (fetched live 2026-10-09): official support
+  (https://lagoslife.com.ng/support); privacy policy, last updated 5 Oct 2026
+  (https://lagoslife.com.ng/privacy); delete-account page
+  (https://lagoslife.com.ng/delete-account); official people guide
+  (https://lagoslife.com.ng/guide/people/); fan wiki verified in-game
+  2026-10-06 (https://lagoslifestyle.wiki/guides/lagos-life-friends-and-messages).
+- Observed: rooms readable by any signed-in player; DMs readable only by two
+  members; read receipts collected (no UI detail published); NO contact or
+  conversation acceptance gate documented — anyone can start a chat, and
+  blocking is the post-hoc control ("stops them starting a chat with you",
+  immediate, reversible); reporting via long-press, private, acted on
+  "usually within a day"; push notifications are rent/meter nudges ONLY
+  ("Nothing else is ever pushed", switchable off); Messages app has an
+  in-app new-message toggle (wiki); friendship levels Stranger /
+  Acquaintance / Padi (30+) / Paddy Mi (60+), @username lookup, group chats
+  (wiki); account deletion removes room messages + both sides of DMs that
+  phone knew; guest/offline play has NO chat at all.
+- NOT observed anywhere: voice notes (any rules), per-message deletion,
+  editing/retraction, typing indicators, acceptance gates. Founder
+  recollection of restricted voice notes is UNVERIFIED — treat as rumour.
+- Conflict noted, unresolved: player-to-player naira transfers — Isakaba
+  review says yes; wiki says no (partners only); one SEO guide describes a
+  gift button. Official docs do not resolve it. Low-trust sources differ.
+- Confidence: HIGH for official-doc items; MEDIUM for wiki (single verifier);
+  LOW for transfer details.
+- Implication: even the reference game ships stranger-initiated DMs with
+  after-the-fact block/report, restrained push, and solo-without-chat as a
+  first-class mode. SUPPORTS our M008 posture (no acceptance gate, capped
+  derived notifications, no chat push, optional/async). Consent-gate DMs are
+  NOT observed industry-standard here.
+
+## R-008 — Chat quality cuts both ways (2026-10-09)
+- Sources: Techblit 2026-10-04 (press-mediated X/Reddit posts — not observed
+  threads); TechCabal 2026-10-08 interviews; Isakaba review 2026-10-08;
+  lagoslifeapp.com (SEO/promotional — weak, flagged).
+- Observed: in-game chat used for begging ("asking strangers for virtual
+  money"), relationship-seeking, wealth comparison, jokes, and help requests
+  — press-mediated QUOTE "I no sabi play this game… Make person teach me
+  abeg"; Eke built "steady connections", exchanged Instagram handles,
+  continued outside the platform (press-mediated QUOTE); Ademola played ~4h/day
+  FOR social interaction, then quit as novelty faded; "I got bored quickly"
+  anecdote (weak source); Isakaba: stranger unpredictability is "some of the
+  game's funniest moments" AND the top risk section (Roblox precedent).
+- Counterevidence: begging/spam dynamics, churn-after-social, solo players
+  (Temitope), boredom — channel availability did not itself retain.
+- Confidence: MEDIUM-LOW (press-mediated, anecdotes, no rates).
+- Implication: communication CAN retain a segment but does not retain by
+  itself; the content of contact matters more than the channel. SUPPORTS
+  consequence-linked, optional, async design; warns against reading chat
+  volume as engagement. Off-platform bridging (IG handles) reinforces H5.
+
 ## Hypothesis tracker
 | ID | Hypothesis | Status | Evidence |
 |----|-----------|--------|----------|
@@ -103,3 +155,4 @@ comments/stats; press-mediated items flagged; hypotheses tracked at the bottom.*
 | H4 | Solo-with-consequences retains without strangers | OPEN | R-004 — needs prototype with/without social |
 | H5 | Open stranger chat costs more than it earns | ACCEPTED (constraint) | R-005 — design rule until safety design exists |
 | H6 | Breadth-without-stakes churns | SUPPORTED (genre) | R-006 — scope discipline, not yet player-observed locally |
+| H7 | Consequence-linked communication drives return visits | OPEN | R-007 (design patterns only), R-008 (mixed) — needs M010 playtests; M008 is the minimal probe |
