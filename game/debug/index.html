@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent9ja — debug client (M010 Phase 1)</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 72rem; margin: 0 auto; padding: 1rem; line-height: 1.4; }
+  section { border: 1px solid #999; border-radius: 6px; padding: 0.6rem 0.8rem; margin: 0.6rem 0; }
+  h2 { font-size: 1rem; margin: 0 0 0.4rem; }
+  ul { margin: 0.2rem 0; padding-left: 1.2rem; }
+  li { margin-bottom: 0.15rem; overflow-wrap: anywhere; }
+  .row { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 0.3rem 0; }
+  input, select, button { font-size: 0.9rem; padding: 0.25rem 0.4rem; }
+  input { width: 9rem; }
+  #log li.rejected { color: #900; }
+  #log li.applied { color: #060; }
+  .note { color: #555; font-size: 0.85rem; }
+  code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<h1>Agent9ja — debug client</h1>
+<p class="note">Crude M010 Phase 1 front end. Lists and buttons over read views and validated commands only — it cannot change the world except through commands, and every result (including rejections) is shown. No audio. Muted-first by construction.</p>
+
+<section><h2>World</h2>
+<div class="row">
+  <label>Seed <input id="seed" value="m009-proof"></label>
+  <button id="boot">Boot fresh</button>
+  <button id="scenario">Load CP1 scenario</button>
+  <button id="adv1">+1 step</button>
+  <button id="adv12">+12 steps</button>
+  <button id="adv48">+48 steps</button>
+</div>
+<div id="clock"></div>
+<div id="world"></div>
+</section>
+
+<section><h2>People &amp; money</h2><div id="people"></div></section>
+<section><h2>Obligations</h2><div id="obligations"></div></section>
+<section><h2>Threads &amp; situations</h2><div id="threads"></div></section>
+<section><h2>Chats</h2><div id="chats"></div></section>
+<section><h2>Book (compound public memory)</h2><div id="book"></div></section>
+<section><h2>Notifications</h2><div id="notifications"></div></section>
+
+<section><h2>Act (verbs)</h2>
+<div class="row"><b>Ask</b><input id="ask_asker" value="person_tola"><input id="ask_target" value="npc_musa"><input id="ask_topic" value="money"><input id="ask_fact" placeholder="fact (optional)"><button id="go_ask">Send</button></div>
+<div class="row"><b>Promise</b><input id="pr_template" placeholder="template"><input id="pr_owes" value="person_tola"><input id="pr_owed" value="npc_musa"><button id="go_promise">Send</button></div>
+<div class="row"><b>Vouch</b><input id="v_voucher" value="person_tola"><input id="v_subject" value="npc_seyi"><input id="v_audience" value="npc_musa"><button id="go_vouch">Send</button></div>
+<div class="row"><b>Repay</b><input id="rp_obligation" placeholder="obligation id"><input id="rp_amount" placeholder="amount"><button id="go_repay">Send</button></div>
+<div class="row"><b>Decline</b><input id="dc_request" placeholder="request id"><button id="go_decline">Send</button><span id="requests"></span></div>
+</section>
+
+<section><h2>Act (world)</h2>
+<div class="row"><b>Move</b><input id="mv_person" value="person_tola"><input id="mv_place" value="market"><button id="go_move">Send</button></div>
+<div class="row"><b>Routine</b><input id="rt_person" value="person_tola"><input id="rt_template" value="routine_home"><input id="rt_home" value="compound"><button id="go_routine">Send</button></div>
+<div class="row"><b>Fault</b><input id="f_id" value="fault_walk1"><input id="f_place" value="compound"><button id="go_fault">Trigger</button></div>
+<div class="row"><b>Levy</b><input id="l_id" value="levy_walk1"><input id="l_convenor" value="npc_musa"><input id="l_collector" value="npc_musa"><input id="l_head" value="8000"><input id="l_due" value="500"><input id="l_cause" value="fault_walk1"><button id="go_levy">Open</button></div>
+<div class="row"><b>Pay levy</b><input id="p_person" value="person_tola"><input id="p_levy" value="levy_walk1"><input id="p_amount" value="8000"><button id="go_pay">Send</button></div>
+<div class="row"><b>Generator</b><button id="go_gen_on">On</button><button id="go_gen_off">Off</button><b>Tank</b><button id="go_refill">Refill (Tola)</button></div>
+<div class="row"><b>DM tell</b><input id="dt_from" value="npc_musa"><input id="dt_to" value="person_tola"><input id="dt_fact" placeholder="fact"><button id="go_tell">Send</button>
+<b>DM request</b><input id="dr_from" value="person_tola"><input id="dr_to" value="npc_seyi"><input id="dr_topic" value="help"><button id="go_request">Send</button></div>
+<div class="row"><b>Raw command</b><input id="raw" style="width:24rem" placeholder='{"type":"advance_time","params":{"steps":5}}'><button id="go_raw">Send</button></div>
+</section>
+
+<section><h2>Save / resume (this browser only)</h2>
+<div class="row"><input id="slot" value="cp1"><button id="go_save">Save</button><button id="go_load">Load</button><button id="go_delete">Delete</button><span id="slots"></span></div>
+</section>
+
+<section><h2>Log (latest first — rejections included)</h2><ul id="log"></ul></section>
+<section><h2>Recent journal (guards and failures surface here)</h2><ul id="journal"></ul></section>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # PROGRESS.md — Agent9ja build log
 
-## YOU ARE HERE → M009 done (uncommitted); M010 next only on request
+## YOU ARE HERE → M010 Phase 1 built, CP1 founder review pending; Phase 2 needs authorization
 
 Standing: `docs/ENGINEERING_DOCTRINE.md` (ENFORCED/CONVENTION/WHEN-SERVER/DEFERRED) + `AGENTS.md` §11–14.
 Product: player-led doctrine adopted 2026-10-08 — `docs/PLAYER_RESEARCH.md` is the evidence record, `AGENTS.md` §15 governs; storyboard/prior docs are hypotheses (H1 supported; H2–H4 open into M010; H5 standing constraint).
@@ -15,7 +15,7 @@ Product: player-led doctrine adopted 2026-10-08 — `docs/PLAYER_RESEARCH.md` is
 | M006 | DONE (2026-10-08, uncommitted) | file persistence contract proven, see M006 notes; re-verified under second authorization (18 save tests) |
 | M007 | DONE (2026-10-08, commit `58c629b`) | storylets + threads + director v1 proven, see M007 notes |
 | M008 | DONE (2026-10-09, commit `693b186`) | DMs + compound group + overhearing + book + notifications proven, see M008 notes |
-| M009 | DONE (2026-10-09, uncommitted) | places + routines + intent + resources + levy chain proven, see M009 notes |
+| M009 | DONE (2026-10-09, commit `72c56b0`) | places + routines + intent + resources + levy chain proven, see M009 notes |
 
 | ID | Status | Proof |
 | M000 | DONE (2026-10-08) | `npm test` green (2/2 + boundary ok); skeleton committed; decisions recorded |
@@ -135,3 +135,10 @@ Kernel only: IDs, clock+phases, seeded RNG streams, command/event/effect + appli
 - Bugs caught by tests (all fixed, none edited green): multi-step booking hazard — 71 duplicate phase batches in a 2-day run (story-seed booking-mark precedent applied to arrivals/init/phase/fuel/levy edges); q.time()-in-reactions timing audit (routines/light fired hours early; now per-step ev.data with crossed trigger); travel steamrolled by placement; silent NEPA↔generator swaps diverging from store (quiet sync event); collector self-relationship/ghost nonsense (collector exempt).
 - Suite: all stages green (17 unit files incl. 31 world tests, save file 26+ tests, 7 replay proofs incl. `proof-m009.json` identical across `--twice`).
 - Risks remaining: single-shot reactions evaluate at command-end time (skew bounded by advance chunk size; M010 clients advance small); thread-named-person overrides need an assignee model (future); collector spending the pot is future gameplay (noted, unbuilt); quiet stretches still untested with players (M010).
+
+## M010 Phase 1 notes (2026-10-09, CP1 pending — implementation paused for founder review)
+- Crude browser front end in `game/debug` (lists + buttons + time controls over queries/commands; reset; save/resume via `localStorage` adapter). No audio, no slice content beyond M009, no players.
+- Seams: `sim/save/protocol.js` split out pure (file layer behavior unchanged — save suite unmodified and green); bridge-only sim contact (`game/bridge/world-client.js`, save adapter, sync SHA-256); `tools/serve-debug.js` localhost-only path-whitelisted static server; `npm run debug` shortcut.
+- Parity proven: bridge boot ≡ Node boot snapshots; adapter envelopes byte-identical to file envelopes; pre-M008 fixture migrates through the adapter; rotation fallback matches. DOM paint has no harness (no browser deps) — CP1 review is the UI test.
+- Suite: all stages green (18 unit files incl. 6 bridge tests, save files, 7 replay proofs). Boundary stage enforces the bridge-only crossing (incl. no `sim/` literal in debug UI).
+- Risks remaining: DOM rendering unverified by automation; `localStorage` quota/eviction behavior untested (single-slot dev use only); server script is dev-only (no auth, localhost).
