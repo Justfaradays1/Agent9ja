@@ -65,6 +65,8 @@ while (i < args.length) {
   else if (a === '--notifications') out.push({ notifications: kernel.query().notifications() });
   else if (a === '--situations') out.push({ situations: kernel.query().situations() });
   else if (a === '--threads') out.push({ threads: kernel.query().threads() });
+  else if (a === '--where') out.push({ where: kernel.query().where_is(args[i++]) });
+  else if (a === '--world') out.push({ world: kernel.query().world() });
   else if (a === '--truth') {
     // DEV-ONLY: ground-truth inspection. Never a player path; the query
     // surface has no equivalent (tested). For calibrating content by hand.

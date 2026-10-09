@@ -12,6 +12,7 @@ import { createVerbs } from '../sim/verbs/index.js';
 import { createMemory } from '../sim/memory/index.js';
 import { createStory } from '../sim/story/index.js';
 import { createComms } from '../sim/comms/index.js';
+import { createWorld } from '../sim/world/index.js';
 
 function readJson(url, label, fallback) {
   try {
@@ -50,6 +51,11 @@ export function bootWorld(seed) {
     peopleReads: people.reads,
     kinds: readJson('../content/obligations/kinds.json', 'obligation kinds', { Debt: {}, PromisedAction: {} }),
     memoryReads: memory.reads,
+  });
+  createWorld(kernel, {
+    places: readJson('../content/places/places.json', 'places', { places: [], travel_min: [] }),
+    routines: readJson('../content/people/routines.json', 'routines', []).routines ?? [],
+    rules: readJson('../content/rules/world.json', 'world rules', {}),
   });
   try {
     registerObligationConsequences(kernel, readJson('../content/rules/obligation-outcomes.json', 'outcome mapping', []));

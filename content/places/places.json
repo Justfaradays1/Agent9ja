@@ -1,0 +1,1 @@
+{"places": [{"anchors": ["gate", "corridor", "kitchen", "borehole", "stoop"], "id": "compound"}, {"anchors": ["shelter", "kiosk"], "id": "danfo_stop"}, {"anchors": ["mama_put", "fabric_row"], "id": "market"}], "travel_min": [{"from": "compound", "min": 15, "to": "danfo_stop"}, {"from": "compound", "min": 30, "to": "market"}, {"from": "danfo_stop", "min": 20, "to": "market"}]}

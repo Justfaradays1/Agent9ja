@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { GATE_READS } from '../sim/memory/index.js';
 import { validateStoryContent } from '../sim/story/index.js';
 import { validateChatterRules } from '../sim/comms/index.js';
+import { validatePlaces, validateRoutines, validateWorldRules } from '../sim/world/index.js';
 
 const failures = [];
 let jsonCount = 0;
@@ -62,6 +63,22 @@ try {
   if (cerr) failures.push(`chatter content: ${cerr}`);
 } catch (err) {
   failures.push(`chatter content unreadable: ${err.message}`);
+}
+
+// Places + routines + world rules: broken geography or unwalkable routine
+// blocks fail here, not as stranded travellers mid-simulation.
+try {
+  const places = JSON.parse(readFileSync(new URL('../content/places/places.json', import.meta.url), 'utf8'));
+  const perr = validatePlaces(places);
+  if (perr) failures.push(`places content: ${perr}`);
+  const routinesDoc = JSON.parse(readFileSync(new URL('../content/people/routines.json', import.meta.url), 'utf8'));
+  const rerr = validateRoutines(routinesDoc.routines, places);
+  if (rerr) failures.push(`routines content: ${rerr}`);
+  const worldRules = JSON.parse(readFileSync(new URL('../content/rules/world.json', import.meta.url), 'utf8'));
+  const werr = validateWorldRules(worldRules);
+  if (werr) failures.push(`world rules content: ${werr}`);
+} catch (err) {
+  failures.push(`world content unreadable: ${err.message}`);
 }
 
 if (failures.length > 0) {

@@ -14,10 +14,11 @@ import { createClock } from './clock.js';
 
 export const CASCADE_MAX = 8;
 // Snapshot structural version, owned here (single source; sim/save aliases it
-// as SCHEMA_VERSION for the envelope). v2 = v1 + comms store (M008). The
+// as SCHEMA_VERSION for the envelope). v2 = v1 + comms store (M008);
+// v3 = v2 + world store (M009). The
 // kernel speaks exactly one version and stays strict: old snapshots arrive
 // via sim/save migration, never via lenient restore.
-export const SNAPSHOT_VERSION = 2;
+export const SNAPSHOT_VERSION = 3;
 // Doctrine §1/§9: per-command event budget. A single command may not flood the
 // journal: breadth cap complements the depth cap. Starting bound; retune with
 // a test if M003+ workloads legitimately need more.
@@ -94,6 +95,9 @@ export function createKernel({ seed = 'dev-seed', stepMinutes } = {}) {
       const out = [];
       for (let i = 0; i < cmd.params.steps; i++) {
         const crossed = clock.advance(1);
+        // Per-step time AND phase: the live clock is already at the final
+        // step by the time reactions run, so reactions must never read
+        // q.time() for step-accurate values (M009 timing audit).
         out.push({ kind: 'StepAdvanced', data: { step: clock.stepCount, minutes: clock.minutes, phase: clock.phase(), crossed } });
       }
       return out;

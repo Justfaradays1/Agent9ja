@@ -13,6 +13,7 @@ import {
   SCHEMA_VERSION, saveSlot, loadSlot, parseEnvelope, createEnvelope,
   migrateSnapshot, inspectSnapshot, saveAutosave,
 } from '../../sim/save/index.js';
+import { emptyWorldState } from '../../sim/world/index.js';
 
 function freshTmp(t) {
   const dir = mkdtempSync(join(tmpdir(), 'agent9ja-save-test-'));
@@ -227,8 +228,12 @@ describe('migrations: ordered, tested, no invented values', () => {
     const migrated = migrateSnapshot({ ...fixture });
     assert.equal(migrated.v, SCHEMA_VERSION);
     // v0 -> v1 fills stores {}; v1 -> v2 injects the canonical empty comms
-    // store (M008). Nothing else is invented.
-    assert.deepEqual(migrated.stores, { comms: { messages: {}, groups: {}, dmThreads: {} } });
+    // store (M008); v2 -> v3 injects the canonical empty world store (M009).
+    // Nothing else is invented.
+    assert.deepEqual(migrated.stores, {
+      comms: { messages: {}, groups: {}, dmThreads: {} },
+      world: emptyWorldState(),
+    });
     assert.equal(migrated.seed, 'fixture-seed');
     // Bare kernel has no module stores: migrated snapshot restores cleanly.
     const bare = createKernel({ seed: 'x' });
@@ -385,6 +390,7 @@ describe('pre-M008 compatibility: genuine M007 fixture migrates and continues', 
     const loaded = loadFixture(t);
     assert.equal(JSON.parse(loaded.snapshot).v, SCHEMA_VERSION);
     assert.deepEqual(JSON.parse(loaded.snapshot).stores.comms, { messages: {}, groups: {}, dmThreads: {} });
+    assert.deepEqual(JSON.parse(loaded.snapshot).stores.world, emptyWorldState(), 'v1 -> v2 -> v3 chain injects canonical empty world too');
     const { kernel: fresh } = bootWorld('old-seed');
     fresh.restore(loaded.snapshot);
     const q = fresh.query();
@@ -425,6 +431,41 @@ describe('pre-M008 compatibility: genuine M007 fixture migrates and continues', 
     const dir = freshTmp(t);
     saveSlot(dir, 's', kernel.snapshot());
     assert.equal(loadSlot(dir, 's').migratedFrom, null);
+  });
+
+  it('migrated v1 world starts empty and simulates (routines assignable)', (t) => {
+    const loaded = loadFixture(t);
+    const { kernel: fresh } = bootWorld('oldworld-seed');
+    fresh.restore(loaded.snapshot);
+    assert.equal(fresh.query().where_is('person_tola'), null, 'migrated persons start unplaced');
+    const d = (id, type, params) => {
+      const r = fresh.dispatch({ cmd_id: id, type, actor: 't', params });
+      assert.equal(r.status, 'applied', `${id}: ${r.reason || 'ok'}`);
+    };
+    d('cmd_mw1', 'set_routine', { person: 'person_tola', template: 'routine_home', home: 'compound' });
+    d('cmd_mw2', 'advance_time', { steps: 40 }); // fixture rests at 540 Morning; cross into Afternoon
+    assert.equal(fresh.query().where_is('person_tola').place, 'compound');
+    assert.equal(fresh.query().world().resources.water, 95, 'one phase with one compound resident');
+  });
+
+  it('v2-era save (comms, no world) migrates to v3 with comms intact', (t) => {
+    // Shape of every save written between the M008 patch and M009: v2 with a
+    // comms store but no world store. Not faked history — the live baseline.
+    const { kernel } = bootWorld('v2shape-seed');
+    const snap = JSON.parse(kernel.snapshot());
+    delete snap.stores.world;
+    snap.v = 2;
+    const dir = freshTmp(t);
+    const env = JSON.parse(createEnvelope(JSON.stringify(snap)));
+    env.schema = 2; // checksum covers the snapshot string only, stays valid
+    writeFileSync(join(dir, 'v2.json'), JSON.stringify(env));
+    const loaded = loadSlot(dir, 'v2');
+    assert.equal(loaded.migratedFrom, 2);
+    assert.deepEqual(JSON.parse(loaded.snapshot).stores.world, emptyWorldState());
+    assert.deepEqual(JSON.parse(loaded.snapshot).stores.comms, { messages: {}, groups: {}, dmThreads: {} });
+    const { kernel: fresh } = bootWorld('v2fresh-seed');
+    assert.doesNotThrow(() => fresh.restore(loaded.snapshot));
+    assert.deepEqual(fresh.query().chats(), { dms: [], groups: [] });
   });
 });
 

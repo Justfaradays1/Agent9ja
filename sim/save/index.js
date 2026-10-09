@@ -14,6 +14,7 @@ import { mkdirSync, writeFileSync, renameSync, readFileSync, existsSync, unlinkS
 import { join } from 'node:path';
 import { SNAPSHOT_VERSION } from '../kernel/pipeline.js';
 import { emptyCommsState } from '../comms/index.js';
+import { emptyWorldState } from '../world/index.js';
 
 // Snapshot structural version: single source is the kernel (it speaks exactly
 // one version and stays strict). CONTENT_VERSION is untouched by this patch:
@@ -63,7 +64,16 @@ function migrateV1toV2(obj) {
   return { ...obj, v: 2, stores };
 }
 
-const MIGRATIONS = { 0: migrateV0toV1, 1: migrateV1toV2 };
+// v2 -> v3 (M009 added the world store): same contract. Persons start
+// unplaced (where_is null) until routines are assigned; resources start at
+// canonical boot state. History is never invented.
+function migrateV2toV3(obj) {
+  const stores = { ...(obj.stores ?? {}) };
+  if (!('world' in stores)) stores.world = emptyWorldState();
+  return { ...obj, v: 3, stores };
+}
+
+const MIGRATIONS = { 0: migrateV0toV1, 1: migrateV1toV2, 2: migrateV2toV3 };
 
 export function migrateSnapshot(obj) {
   if (typeof obj?.v === 'number' && obj.v > SCHEMA_VERSION) {

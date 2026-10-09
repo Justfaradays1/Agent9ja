@@ -372,6 +372,12 @@ export function createComms(kernel, { knowledge, chatter = [], templates = [] })
         notes.push({ kind: 'request_open', ref: r.id, t: r.t, priority: 3 });
       }
     }
+    // Open repair levy (M009): the compound needs money by a deadline. Same
+    // composed-query pattern as above; absent world module = skipped.
+    if (typeof q.world === 'function') {
+      const open = q.world().levy;
+      if (open) notes.push({ kind: 'levy_open', ref: open.id, t: open.due_t, priority: 1 });
+    }
     notes.sort((a, b) => a.priority - b.priority || ((a.t ?? 0) - (b.t ?? 0)) || (a.ref < b.ref ? -1 : 1));
     return JSON.parse(JSON.stringify(notes.slice(0, NOTIF_CAP)));
   });

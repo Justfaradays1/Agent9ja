@@ -1,0 +1,1 @@
+{"gen_cost_per_hour": 5000, "levy_history_cap": 5, "nepa_schedule": {"Afternoon": "off", "Evening": "on", "Morning": "on", "Night": "off"}, "repair_cost": 20000, "water_per_phase_per_resident": 5}
