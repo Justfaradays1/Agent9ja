@@ -7,6 +7,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GATE_READS } from '../sim/memory/index.js';
+import { validateStoryContent } from '../sim/story/index.js';
 
 const failures = [];
 let jsonCount = 0;
@@ -38,6 +39,17 @@ for (const r of rules) {
   }
 }
 if (orphans.length > 0) failures.push(`unconsumed memory kinds: ${orphans.join(', ')}`);
+
+// Storylets + director rules validate against the closed vocabularies so a
+// content typo fails here loudly instead of silently never matching in-game.
+try {
+  const storylets = JSON.parse(readFileSync(new URL('../content/story/slice.json', import.meta.url), 'utf8'));
+  const director = JSON.parse(readFileSync(new URL('../content/rules/director.json', import.meta.url), 'utf8'));
+  const serr = validateStoryContent(storylets, director);
+  if (serr) failures.push(`story content: ${serr}`);
+} catch (err) {
+  failures.push(`story content unreadable: ${err.message}`);
+}
 
 if (failures.length > 0) {
   console.error('CONTENT LINT FAIL\n' + failures.join('\n'));

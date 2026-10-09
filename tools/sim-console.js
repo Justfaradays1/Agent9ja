@@ -6,6 +6,7 @@
 //     [--flags] [--journal [N]] [--trace SEQ] [--snapshot]
 //     [--person ID] [--rel A B] [--balance ID] [--obl ID] [--due [N]]
 //     [--claims] [--card FACT] [--menu ASKER TARGET] [--remember ID] [--truth FACT]
+//     [--situations] [--threads]
 import { bootWorld } from './world.js';
 
 const args = process.argv.slice(2);
@@ -59,6 +60,8 @@ while (i < args.length) {
     out.push({ interaction_menu: kernel.query().interaction_menu(x, y) });
   }
   else if (a === '--remember') out.push({ remembers: kernel.query().what_they_remember(args[i++]) });
+  else if (a === '--situations') out.push({ situations: kernel.query().situations() });
+  else if (a === '--threads') out.push({ threads: kernel.query().threads() });
   else if (a === '--truth') {
     // DEV-ONLY: ground-truth inspection. Never a player path; the query
     // surface has no equivalent (tested). For calibrating content by hand.

@@ -1,6 +1,6 @@
 # PROGRESS.md — Agent9ja build log
 
-## YOU ARE HERE → M006 done (uncommitted); M007 next only on request
+## YOU ARE HERE → M007 done (uncommitted); M008 next only on request
 
 Standing: `docs/ENGINEERING_DOCTRINE.md` (ENFORCED/CONVENTION/WHEN-SERVER/DEFERRED) + `AGENTS.md` §11–14.
 Product: player-led doctrine adopted 2026-10-08 — `docs/PLAYER_RESEARCH.md` is the evidence record, `AGENTS.md` §15 governs; storyboard/prior docs are hypotheses (H1 supported; H2–H4 open into M010; H5 standing constraint).
@@ -13,6 +13,7 @@ Product: player-led doctrine adopted 2026-10-08 — `docs/PLAYER_RESEARCH.md` is
 | M004 | DONE (2026-10-08, uncommitted) | 101/101 tests; knowledge/verb proofs below |
 | M005 | DONE (2026-10-08, uncommitted) | 118/118 tests (101 prior + 17 new); proofs below |
 | M006 | DONE (2026-10-08, uncommitted) | file persistence contract proven, see M006 notes; re-verified under second authorization (18 save tests) |
+| M007 | DONE (2026-10-08, uncommitted) | storylets + threads + director v1 proven, see M007 notes |
 
 | ID | Status | Proof |
 | M000 | DONE (2026-10-08) | `npm test` green (2/2 + boundary ok); skeleton committed; decisions recorded |
@@ -101,3 +102,9 @@ Kernel only: IDs, clock+phases, seeded RNG streams, command/event/effect + appli
 - Risks remaining: no multi-process safety (last-writer-wins, documented); no crash-mid-dispatch recovery beyond backups (restore-from-backup after fatal errors, documented); NPC rename table deferred to first rename; RNG continuity preserved byte-exact but has no consumer until M007 director.
 - Second authorization pass (2026-10-08): re-verified tree state matches prior report; added settled-obligation persistence (Fulfilled + split-across-save settlement) and post-load disclosure equivalence tests. Suite now 119 unit + 17 save. No arch changes, no new decisions.
 - Final audit (2026-10-08): parseEnvelope inner-payload parse now wrapped as corrupt_save (was raw SyntaxError); stale crash-residue tmp files cleared on save with test; suite 119 unit + 18 save. No arch changes.
+
+## M007 notes (2026-10-08, no arch rewrite)
+- `sim/story` gains threads (open/close/expire, deadlines, defaults from existing event kinds), closed condition vocabulary (6 kinds), director v1 (crisis cap, breather, no-stacking, joy-first ordering), `threads()`/`situations()` queries. Seeds untouched.
+- Content: `content/story/slice.json` (10 storylets) + `content/rules/director.json`; lint validates both. Console gains --situations/--threads.
+- Bugs caught by tests: duplicated file tail (syntax), double-registered story store, asymmetric test helper, snapshot-vs-stores assertion on rejections, multi-step budget overflow in test advances, real 56-duplicate seed-style expiry hazard (fixed via booking precedent).
+- Risks remaining: default outcomes referencing future-unstable entities fail loud by design; joy cadence deferred; surfacing is query-side only until M008 comms consumes it.

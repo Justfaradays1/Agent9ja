@@ -34,7 +34,10 @@ export function bootWorld(seed) {
   const knowledge = createKnowledge(kernel, {
     disclosure: readJson('../content/rules/disclosure.json', 'disclosure rules', []),
   });
-  createStory(kernel);
+  createStory(kernel, {
+    storylets: readJson('../content/story/slice.json', 'storylets', []),
+    director: readJson('../content/rules/director.json', 'director rules', null),
+  });
   createVerbs(kernel, {
     templates: readJson('../content/obligations/promise-templates.json', 'promise templates', []),
     knowledge,
