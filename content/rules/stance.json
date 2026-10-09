@@ -1,0 +1,1 @@
+{"hysteresis": 5, "thresholds": [{"stance": "Burned", "when": {"tension_gte": 80}}, {"stance": "Frosty", "when": {"trust_lte": 20}}, {"stance": "Cool", "when": {"warmth_lte": 35}}, {"stance": "Warm", "when": {"tension_lte": 25, "trust_gte": 70, "warmth_gte": 60}}, {"stance": "Neutral", "when": {}}]}

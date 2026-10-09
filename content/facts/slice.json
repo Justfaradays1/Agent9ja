@@ -1,0 +1,1 @@
+[{"fact_id": "fact_true_rent", "origin_id": "origin_dev", "tags": ["money", "rent"], "value": 450000}, {"fact_id": "fact_son_returning", "origin_id": "origin_dev", "tags": ["housing", "landlord"], "value": false}, {"fact_id": "fact_gate_code", "origin_id": "origin_dev", "tags": ["security"], "value": 4410}]

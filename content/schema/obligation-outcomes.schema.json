@@ -1,0 +1,1 @@
+{"$schema": "http://json-schema.org/draft-07/schema#", "title": "Agent9ja obligation-outcome mapping (M003)", "type": "array", "items": {"properties": {"kind": {"type": "string"}, "nudge": {"type": "object"}, "on": {"enum": ["ObligationBroken", "ObligationFulfilled"]}, "tag": {"type": "string"}, "when": {"type": "object"}}, "required": ["kind", "on"], "type": "object"}}

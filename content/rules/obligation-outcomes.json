@@ -1,0 +1,1 @@
+[{"kind": "Debt", "nudge": {"dTrust": -10}, "on": "ObligationBroken", "tag": "broke_word"}, {"kind": "Debt", "on": "ObligationFulfilled", "tag": "kept_word", "when": {"was_broken": false}}, {"kind": "Debt", "on": "ObligationFulfilled", "tag": "repaid_late", "when": {"was_broken": true}}]

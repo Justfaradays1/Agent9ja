@@ -1,0 +1,1 @@
+{"$schema": "http://json-schema.org/draft-07/schema#", "title": "Agent9ja obligation kinds (M003)", "type": "object", "patternProperties": {"^[A-Za-z][A-Za-z0-9_]*$": {"type": "object"}}, "required": ["Debt", "PromisedAction"]}

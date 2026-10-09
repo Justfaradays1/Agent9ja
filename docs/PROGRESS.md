@@ -1,6 +1,18 @@
 # PROGRESS.md — Agent9ja build log
 
-## YOU ARE HERE → M000 done, entering M001
+## YOU ARE HERE → M006 done (uncommitted); M007 next only on request
+
+Standing: `docs/ENGINEERING_DOCTRINE.md` (ENFORCED/CONVENTION/WHEN-SERVER/DEFERRED) + `AGENTS.md` §11–14.
+Product: player-led doctrine adopted 2026-10-08 — `docs/PLAYER_RESEARCH.md` is the evidence record, `AGENTS.md` §15 governs; storyboard/prior docs are hypotheses (H1 supported; H2–H4 open into M010; H5 standing constraint).
+
+| ID | Status | Proof |
+| M000 | DONE (2026-10-08, tag `M000`) | `npm test` green; skeleton; decisions recorded |
+| M001 | DONE (2026-10-08, uncommitted) | 25/25 tests; replay-identical; 7 proofs in log below |
+| M002 | DONE (2026-10-08, uncommitted) | 45/45 tests; directional proofs in log below |
+| M003 | DONE (2026-10-08, uncommitted) | 72/72 tests; money/obligation proofs below |
+| M004 | DONE (2026-10-08, uncommitted) | 101/101 tests; knowledge/verb proofs below |
+| M005 | DONE (2026-10-08, uncommitted) | 118/118 tests (101 prior + 17 new); proofs below |
+| M006 | DONE (2026-10-08, uncommitted) | file persistence contract proven, see M006 notes; re-verified under second authorization (17 save tests) |
 
 | ID | Status | Proof |
 | M000 | DONE (2026-10-08) | `npm test` green (2/2 + boundary ok); skeleton committed; decisions recorded |
@@ -16,8 +28,27 @@
 - Engine 3D spike NOT run (no engine installed); recorded as M000 gap — does not block M001–M010 (sim-first per architecture).
 
 ## Tests
-- tests/unit/m000.test.js: 2/2 pass. Boundary stub: ok.
-- Command: `npm test`.
+- `npm test` → 45/45 pass (25 M001 + 20 M002) + boundary ok.
+- M002 proofs: directional asymmetry (A→B without B→A); creation guards (self/dup/missing/bad-id/bad-dim); clamp 0..100 + cmd_id-safe repeats; tag round-trip + safe absent-remove no-op; threshold crossing; ±1 hysteresis (Frosty held at 21, released at 26); content-only rule swap changes stance; standing {stance,tags,favour:0}; origin_dev provenance; seed-helper replay equality; trace→cmd for nudges; save/restore with people+rels continues identically; M000/M001 still green.
+- Two test-caught bugs fixed honestly: open-validator rejected defaulted dims; checkDims conflated open/nudge contracts (split into checkProvidedDims + explicit delta rule).
+
+## M002 implementation notes (no arch change)- Pipeline gained additive registries only: registerCommand/Store/onApply/registerQuery (+resolver {rejected} path, stores in snapshot/restore). M001 behavior verified unchanged (25 green before + after).
+- Favour balance intentionally 0 with contract comment — M003 ledger owns it. No traits stored (M004 owns them with disclosure rules). No roles stored anywhere.
+- Console: --person/--rel read-only views verified live.
+- M001 proofs (all recorded 2026-10-08):
+  1. Suite green, boundary green.
+  2. Replay: `scenario-runner proof-replay.json --twice` → identical, hash `76a8c615`.
+  3. Idempotency: `cmd_once` sent twice → applied once + duplicate, value stays 1.
+  4. Ordering: reactions FIFO in registration order, children queue behind; seqs monotonic.
+  5. Cascade: self-loop trips `CascadeGuardTripped` at depth 8, branch halted.
+  6. No unauthorized path: query views frozen (mutation throws), sim/ grep clean of Math.random/Date.now, bridge-only rule intact.
+  7. why-*: console `--trace 1` returns FlagSet←cmd_w1 chain; rejections carry reason on journal.
+
+## Architecture deviations found while building (honest log)
+- Restore-into-differently-seeded kernel diverged on `seed` field → fixed: restore takes rootSeed from save (save fully determines future). Kernel + test updated, no doc change needed (matches §10 intent).
+- `node --test <dir>` fails on this machine → runner passes explicit file list. Tooling-only.
+- Two proof-script assertion errors were mine (stepCount 12 not 15; phase is derived, not saved) — sim was right both times. No doc change.
+- JS ESM kept (see m000-baseline note); strict tsc trigger stays M006.
 
 ## Proven
 - One-command headless run works on Node 25.2.1 (dev laptop newer than Node 20 LTS target — note).
@@ -29,3 +60,44 @@
 
 ## Next (M001)
 Kernel only: IDs, clock+phases, seeded RNG streams, command/event/effect + applier, cascade guard, query skeleton, debug console command set, scenario runner. No people/money/UI. Acceptance: 7 days headless in budget, replay-identical, causal chain prints, guard trips on loop, boundary green.
+
+## M005 notes (2026-10-08, no arch change)
+- Modules: `sim/memory` (content rules, scars, caps, lint, gates registry, what_they_remember, debug accessor) + `sim/story` (schedule/cancel/fire, cap 100, no consumers yet — documented).
+- Gates wired: disclosure downgrade/upgrade (reasons cite memory ids), vouch refusal (burn cited), grace halving (cited on record). Downgrades only conceal; upgrades never override rule Refuse/Mislead.
+- M003 follow-up fixed in passing: seen-table eviction is lowest-firstSeq (restore/continue divergence eliminated).
+- Bugs the tests caught: verb/disclosure case mismatch (fixed M004, verified green here); test-side cmd_ids, counts, double wiring; my own assertion slips on supersede/history/overlap semantics (sim correct in each case).
+- Risks remaining: scars unbounded in theory (M006 revisit); seeds have no consumers until M007; shading/favour still await M006+ gates; no concurrency/crash-safety claims.
+
+## M004 notes (2026-10-08, no arch change)
+- Modules: `sim/knowledge` (facts/beliefs/player-claims/learned-incentives, deterministic disclosure, claim cards, supersede) + `sim/verbs` (ask×4 topics, promise templates, vouch-record-only, repay, decline, interaction menu). Requests store lives in obligations (pre-commitment family). Favour kind added to content kinds; settles like an action.
+- Shared builders: verbs reuse obligations' buildCreate/buildSettle (no duplicated rules). Resolvers may import owner-module read helpers; state flows only via events (documented pattern).
+- M003 regression gate (new file, all green): compaction→restore→continue identical; duplicate consequence-wiring now throws (WeakMap guard — the double-nudge hazard, made impossible); same-due ordering by (due_t,id); exact-boundary Due-then-Broken; due_in_min 0 rejected. One genuine M003 defect found: seen-table eviction used insertion order → restore/continue diverged; now evicts lowest firstSeq (content-deterministic).
+- Bugs the tests caught in M004: verb/disclosure case mismatch (`Shade` vs `shade` — claims silently defused); test-side cmd_id underscores, opening-txn counts, duplicate wiring in test setup.
+- Replay hashes for proof-replay/proof-m003 shifted vs M003 (snapshots now carry knowledge/request stores) — self-equality holds on all three scenarios.
+- Risks remaining: Ask always indebts (by design, watch in playtests); shading has no mechanical weight until M005 gates; no claim expiry; favour due defaults are slice constants.
+
+## M003 notes (2026-10-08, no arch change)
+- Modules: `sim/economy` (accounts, integer-kobo transfers, checkpoint compaction, bands) + `sim/obligations` (Debt/PromisedAction, Active→Due→Fulfilled/Broken/Renegotiated, partials, creditor-consent renegotiation, per-step due scan) + outcome→relationship mapping wired in `sim/relationships` (content-driven, skips stranger pairs).
+- Pipeline deltas (additive): reactions receive frozen `ctx.q`; scenario-runner boots full world (M001 replay still identical, hash unchanged).
+- Locked semantics in `docs/decisions/2026-10-08-m003-semantics.md`. Favour derivation deliberately stays 0 until M004.
+- Bugs the tests caught (all fixed, none in prior milestones): partial-settle marked Fulfilled (split Settled/Fulfilled events); my cmd_ids missing underscores; opening-txn off-by-one counts; rejected-settle snapshot expectation (rejections journal evidence — authority untouched); history includes honest Due step; double-registered mapping (visible as double nudge).
+- Risks remaining: due scan O(obligations) per step is fine now, revisit if obligation counts grow 100x; seen-table bound still documents M006 compaction; no concurrency/crash-safety claims (single-process, local saves only).
+
+## Verification audit (2026-10-08, no milestone, no arch change)
+- `npm test` now runs 4 stages: unit + content-lint + boundary + replay proofs
+  (previously scenarios were manual-only). Discipline recorded in docs/TESTING.md.
+- boundary-check rewritten from stub to real scan (sim→game imports any form,
+  debug accessors confined, bridge rule); proven both directions with a temp
+  probe (removed). Runner exit-1 proven with a temp failing script (removed).
+- Added: JSON-validity lint for all content files; slice.json loadability test;
+  direct promise_templates assertion. No existing test weakened.
+- Suite: 119/119. Standing: uncommitted, no tags.
+
+## M006 notes (2026-10-08, no arch rewrite)- New `sim/save/` (envelope, atomic writes, rotation, newest-valid-wins load, migrations, inspector data, autosave API) + `tools/save-inspector.js` + `tests/save/` stage in run-tests.
+- Contract: save → restart → load → continue equals uninterrupted run, proven across money/obligations/relationships/knowledge/memories/seeds/ids/seq.
+- Failure handling: garbage/truncation/checksum-tamper fall back file-by-file with reasons; all-invalid and newer-schema fail loudly; live world untouched on failed load; bad slot names rejected pre-disk.
+- Stance kept as hysteresis anchor (reasoned §10.1 deviation, tested across save/load). Orphan memory kinds drop on load, rest verbatim. Seeds exactly-once via booking (obligations precedent); 56-duplicate bug found and fixed by test.
+- Scar verdict (measured): 52 scars ≈ 8.5KB of a 210KB stressed save (~4%). No new cap; revisit if scar counts reach thousands.
+- Risks remaining: no multi-process safety (last-writer-wins, documented); no crash-mid-dispatch recovery beyond backups (restore-from-backup after fatal errors, documented); NPC rename table deferred to first rename; RNG continuity preserved byte-exact but has no consumer until M007 director.
+- Second authorization pass (2026-10-08): re-verified tree state matches prior report; added settled-obligation persistence (Fulfilled + split-across-save settlement) and post-load disclosure equivalence tests. Suite now 119 unit + 17 save. No arch changes, no new decisions.
+- Final audit (2026-10-08): parseEnvelope inner-payload parse now wrapped as corrupt_save (was raw SyntaxError); stale crash-residue tmp files cleared on save with test; suite 119 unit + 18 save. No arch changes.

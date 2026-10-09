@@ -1,1 +1,1 @@
-{"name": "agent9ja", "scripts": {"test": "node tools/run-tests.js"}, "type": "module", "version": "0.0.0-m000"}
+{"name": "agent9ja", "engines": {"node": ">=20"}, "scripts": {"test": "node tools/run-tests.js"}, "type": "module", "version": "0.0.0-m000"}
