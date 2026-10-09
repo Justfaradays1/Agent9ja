@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
 <title>Agent9ja — debug client (M010 Phase 1)</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; }
@@ -179,19 +180,38 @@
 
 <script>
 // Boot watchdog: module scripts can die silently (blocked storage, failed
-// import), leaving visible-but-dead controls. app.js sets window.__cp1_boot_ok
-// after attaching every handler; if it never arrives, say so on the page
-// instead of leaving a mystery. Classic script, runs before the module.
+// import, old browser syntax), leaving visible-but-dead controls. app.js sets
+// window.__cp1_boot_ok after attaching every handler; if it never arrives,
+// say so on the page instead of leaving a mystery. This classic script also
+// records the real failure (resource URL or error message) so the next
+// report contains the cause, not just this generic text.
 window.__cp1_boot_ok = false;
-setTimeout(function () {
-  if (!window.__cp1_boot_ok) {
-    var el = document.getElementById('result');
-    if (el) {
-      el.className = 'bad';
-      el.textContent = 'The game code failed to start (storage blocked? server unreachable?). The buttons below cannot work until this is fixed — try allowing site data and reloading.';
-    }
+window.__cp1_boot_errors = [];
+window.__cp1_boot_t0 = Date.now();
+window.addEventListener('error', function (e) {
+  var detail = (e.filename ? e.filename + ' ' : '') + (e.message || 'resource failed');
+  if (window.__cp1_boot_errors.indexOf(detail) === -1) window.__cp1_boot_errors.push(detail);
+}, true);
+window.addEventListener('unhandledrejection', function (e) {
+  var detail = 'unhandled: ' + ((e.reason && e.reason.message) || e.reason || 'unknown');
+  if (window.__cp1_boot_errors.indexOf(detail) === -1) window.__cp1_boot_errors.push(detail);
+});
+function cp1BootReport() {
+  var el = document.getElementById('result');
+  if (!el) return;
+  var extra = window.__cp1_boot_errors.length ? ' Seen: ' + window.__cp1_boot_errors.join(' | ') : ' No error details captured.';
+  el.className = 'bad';
+  el.textContent = 'The game code failed to start.' + extra + ' The buttons below cannot work until this is fixed — try allowing site data, updating the browser, hard-reloading (Ctrl+Shift+R), and reloading.';
+}
+var cp1BootTimer = setInterval(function () {
+  if (window.__cp1_boot_ok) {
+    clearInterval(cp1BootTimer);
+    return;
   }
-}, 4000);
+  // Give slow machines time: report at 4s, refresh the report at 12s.
+  var elapsed = Date.now() - window.__cp1_boot_t0;
+  if (elapsed > 4000) cp1BootReport();
+}, 1000);
 </script>
 <script type="module" src="./app.js"></script>
 </body>

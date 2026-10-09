@@ -209,6 +209,8 @@ describe('storage-denied survival: the page must never die on blocked storage (P
     assert.ok(app.includes('Saving is unavailable in this browser'), 'unavailable path has a message');
     assert.ok(app.includes('window.__cp1_boot_ok = true'), 'boot-ok flag set after handlers attach');
     assert.ok(html.includes('__cp1_boot_ok'), 'watchdog present: silent module death becomes a visible message');
+    assert.ok(html.includes("addEventListener('error'"), 'watchdog captures the real failure for the next report');
+    assert.ok(html.includes('rel="icon"'), 'inline favicon: no noise 404s in the console');
   });
 });
 
