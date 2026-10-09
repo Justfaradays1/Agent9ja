@@ -12,7 +12,7 @@ Product: player-led doctrine adopted 2026-10-08 — `docs/PLAYER_RESEARCH.md` is
 | M003 | DONE (2026-10-08, uncommitted) | 72/72 tests; money/obligation proofs below |
 | M004 | DONE (2026-10-08, uncommitted) | 101/101 tests; knowledge/verb proofs below |
 | M005 | DONE (2026-10-08, uncommitted) | 118/118 tests (101 prior + 17 new); proofs below |
-| M006 | DONE (2026-10-08, uncommitted) | file persistence contract proven, see M006 notes; re-verified under second authorization (17 save tests) |
+| M006 | DONE (2026-10-08, uncommitted) | file persistence contract proven, see M006 notes; re-verified under second authorization (18 save tests) |
 
 | ID | Status | Proof |
 | M000 | DONE (2026-10-08) | `npm test` green (2/2 + boundary ok); skeleton committed; decisions recorded |
