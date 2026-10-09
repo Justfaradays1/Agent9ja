@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { bootWorld as bootNodeWorld } from '../../tools/world.js';
 import { saveSlot, loadSlot } from '../../sim/save/index.js';
-import { bootWorld, applyScenario } from '../../game/bridge/world-client.js';
+import { bootWorld, applyScenario, scenarioLoadSummary, scenarioFormDefaults, humanizeId } from '../../game/bridge/world-client.js';
 import { createAdapter, SCHEMA_VERSION, platformStorage } from '../../game/bridge/save-adapter.js';
 import { sha256Hex } from '../../game/bridge/sha256.js';
 
@@ -224,6 +224,37 @@ describe('storage-denied survival: the page must never die on blocked storage (P
       assert.ok(s.startsWith('/'), `script src must be root-absolute, got ${s}`);
       assert.ok(roots.some((r) => s.startsWith(r)), `script src must be served, got ${s}`);
     }
+  });
+});
+
+describe('scenario presentation helpers: honest reloads, derived defaults, readable titles', () => {
+  it('all-duplicate reloads are reported, never masked as success', () => {
+    const all = [{ status: 'duplicate' }, { status: 'duplicate' }];
+    assert.deepEqual(scenarioLoadSummary(all), { applied: 0, duplicates: 2, rejected: 0, allDuplicate: true });
+    const mixed = [{ status: 'applied' }, { status: 'duplicate' }, { status: 'rejected', reason: 'x' }];
+    const s = scenarioLoadSummary(mixed);
+    assert.equal(s.allDuplicate, false);
+    assert.deepEqual([s.applied, s.duplicates, s.rejected], [1, 1, 1]);
+    assert.equal(scenarioLoadSummary([]).allDuplicate, false, 'empty is not a reload');
+  });
+  it('form defaults derive from the scenario file, never hardcoded', () => {
+    const sc = JSON.parse(readFileSync(join(ROOT, 'tests/scenario/proof-cp1-start.json'), 'utf8'));
+    assert.deepEqual(scenarioFormDefaults(sc.steps), {
+      fault: 'fault_cp1', faultPlace: 'compound', levy: 'levy_cp1',
+      convenor: 'npc_musa', collector: 'npc_musa', perHead: 8000,
+      dueInMin: 500, cause: 'fault_cp1',
+    });
+    assert.deepEqual(scenarioFormDefaults([{ advance: 5 }]), {}, 'scenarios without levies contribute nothing');
+  });
+  it('situation titles humanize ids without inventing narrative', () => {
+    assert.equal(humanizeId('calm_moment'), 'Calm Moment');
+    assert.equal(humanizeId('housing_rent_due'), 'Housing Rent Due');
+  });
+  it('ask form carries an optional amount input', () => {
+    const html = readFileSync(join(ROOT, 'game/debug/index.html'), 'utf8');
+    assert.ok(/<label[^>]*>[^<]*<input[^>]*id="ask_amount"/.test(html), 'amount input sits inside a label');
+    const app = readFileSync(join(ROOT, 'game/debug/app.js'), 'utf8');
+    assert.ok(app.includes('ask_amount'), 'ask handler reads the amount input');
   });
 });
 

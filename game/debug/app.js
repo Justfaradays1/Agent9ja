@@ -3,7 +3,7 @@
 // crossing is game/bridge: this file never touches authoritative modules
 // directly (boundary-checked). All world changes go through kernel.dispatch;
 // every result, including rejections with reasons, is shown in the log.
-import { bootWorld, applyScenario } from '../bridge/world-client.js';
+import { bootWorld, applyScenario, scenarioLoadSummary, scenarioFormDefaults, humanizeId } from '../bridge/world-client.js';
 import { createAdapter, platformStorage } from '../bridge/save-adapter.js';
 
 const $ = (id) => document.getElementById(id);
@@ -95,12 +95,31 @@ async function boot(seed) {
 async function loadScenario() {
   if (!kernel) await boot(val('seed') || 'cp1-seed');
   try {
-    const sc = await (await fetch('/tests/scenario/proof-m009.json')).json();
+    const sc = await (await fetch('/tests/scenario/proof-cp1-start.json')).json();
+    // Defaults follow the scenario file, never hardcoded ids.
+    const d = scenarioFormDefaults(sc.steps);
+    if (d.fault) { $('f_id').value = d.fault; $('l_cause').value = d.cause ?? d.fault; }
+    if (d.faultPlace) $('f_place').value = d.faultPlace;
+    if (d.levy) {
+      $('p_levy').value = d.levy; $('l_id').value = d.levy;
+      if (d.convenor) $('l_convenor').value = d.convenor;
+      if (d.collector) $('l_collector').value = d.collector;
+      if (d.perHead !== undefined) { $('p_amount').value = String(d.perHead); $('l_head').value = String(d.perHead); }
+      if (d.dueInMin !== undefined) $('l_due').value = String(d.dueInMin);
+    }
     const results = applyScenario(kernel, sc.steps);
-    const bad = results.filter((r) => r.status !== 'applied');
-    log({ scenario: 'proof-m009', applied: results.length - bad.length, rejected: bad });
+    const s = scenarioLoadSummary(results);
+    if (s.allDuplicate) {
+      showResult(true, 'Scenario already loaded — Boot fresh to restart. Nothing changed.');
+    } else if (s.rejected > 0) {
+      showResult(false, `Partially loaded: ${s.applied} applied, ${s.rejected} rejected, ${s.duplicates} already present — see log.`);
+    } else {
+      showResult(true, 'Scenario ready: transformer fault is open and the repair levy is open — pay your share below.');
+    }
+    log({ scenario: 'proof-cp1-start', applied: s.applied, duplicates: s.duplicates, rejected: s.rejected });
     render();
   } catch (err) {
+    showResult(false, `Scenario failed: ${err.message}`);
     log({ status: 'rejected', reason: `scenario failed: ${err.message}` });
   }
 }
@@ -162,7 +181,7 @@ function render() {
   $('obligations').innerHTML = '<ul>' + list(q.obligations({}), (o) => `${o.id} ${o.kind} ${o.owes}>${o.owed} ${o.amount ?? ''} paid=${o.paid ?? 0} ${o.status} due@${o.due_t}`) + '</ul>';
   const threads = q.threads({ status: 'open' });
   $('threads').innerHTML = '<ul>' + list(threads, (x) => `${x.id} [${(x.tags || []).join(',')}] deadline@${x.deadline_t}`) + '</ul>'
-    + '<ul>' + list(q.situations().slice(0, 8), (s) => esc(typeof s === 'string' ? s : JSON.stringify(s))) + '</ul>';
+    + '<ul>' + list(q.situations().slice(0, 8), (s) => (typeof s === 'string' ? s : `${humanizeId(s.id)} [${(s.tags || []).join(', ')}]`)) + '</ul>';
   const chats = q.chats();
   $('chats').innerHTML = '<ul>'
     + chats.groups.map((g) => `<li><b>${esc(g.id)}</b> [${esc(g.members.join(','))}]<ul>`
@@ -187,7 +206,14 @@ $('adv1').onclick = () => send('advance_time', { steps: 1 });
 $('adv12').onclick = () => send('advance_time', { steps: 12 });
 $('adv48').onclick = () => send('advance_time', { steps: 48 });
 
-$('go_ask').onclick = () => send('ask', { asker: val('ask_asker'), target: val('ask_target'), topic: val('ask_topic'), ...(val('ask_fact') ? { fact: val('ask_fact') } : {}) });
+$('go_ask').onclick = () => {
+  const amount = val('ask_amount');
+  if (amount !== '') {
+    if (!/^[1-9][0-9]*$/.test(amount)) return showResult(false, 'Ask refused here: amount must be a positive whole number, or leave it empty.');
+    return send('ask', { asker: val('ask_asker'), target: val('ask_target'), topic: val('ask_topic'), amount: Number(amount), ...(val('ask_fact') ? { fact: val('ask_fact') } : {}) });
+  }
+  send('ask', { asker: val('ask_asker'), target: val('ask_target'), topic: val('ask_topic'), ...(val('ask_fact') ? { fact: val('ask_fact') } : {}) });
+};
 $('go_promise').onclick = () => send('promise', { template: val('pr_template'), owes: val('pr_owes'), owed: val('pr_owed') });
 $('go_vouch').onclick = () => send('vouch', { voucher: val('v_voucher'), subject: val('v_subject'), audience: val('v_audience') });
 $('go_repay').onclick = () => send('repay', { obligation: val('rp_obligation'), ...(val('rp_amount') ? { amount: Number(val('rp_amount')) } : {}) });

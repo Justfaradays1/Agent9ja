@@ -56,6 +56,37 @@ export function bootWorld({ seed = 'dev-seed', content = {} } = {}) {
   return { kernel };
 }
 
+// Presents scenario load outcomes honestly: all-duplicate reloads are NOT
+// successes, partial failures are NOT masked. Pure presentation logic,
+// tested in tests/unit/bridge.test.js.
+export function scenarioLoadSummary(results) {
+  const applied = results.filter((r) => r.status === 'applied').length;
+  const dup = results.filter((r) => r.status === 'duplicate').length;
+  const bad = results.length - applied - dup;
+  return { applied, duplicates: dup, rejected: bad, allDuplicate: results.length > 0 && applied === 0 && bad === 0 };
+}
+
+// Derives form defaults from a scenario definition (ids actually opened),
+// never hardcoded. Absent steps simply contribute nothing.
+export function scenarioFormDefaults(steps) {
+  const out = {};
+  for (const s of steps) {
+    if (s.send?.type === 'trigger_fault') { out.fault = s.send.params.fault_id; out.faultPlace = s.send.params.place; }
+    if (s.send?.type === 'open_levy') {
+      out.levy = s.send.params.levy_id; out.convenor = s.send.params.convenor;
+      out.collector = s.send.params.collector; out.perHead = s.send.params.per_head;
+      out.dueInMin = s.send.params.due_in_min; out.cause = s.send.params.cause;
+    }
+  }
+  return out;
+}
+
+// Human-readable title from a stable id. Presentation only: splits words,
+// adds no narrative (full situation writing is Phase 2 slice content).
+export function humanizeId(id) {
+  return String(id).split('_').map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w)).join(' ');
+}
+
 // Applies scenario steps ({send:{cmd_id,type,actor,params}} | {advance:n}).
 // Pure logic shared by the debug UI and Node tests. Advance cmd_ids derive
 // deterministically from a counter so replays are identical.

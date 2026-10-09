@@ -1,6 +1,6 @@
 # PROGRESS.md — Agent9ja build log
 
-## YOU ARE HERE → M010 Phase 1 interaction repair built, CP1 re-review pending; Phase 2 needs authorization
+## YOU ARE HERE → CP1 batch (reload honesty, titles, ask amount, derived defaults) + cp1-start scenario built, re-review pending; Phase 2 needs authorization
 
 Standing: `docs/ENGINEERING_DOCTRINE.md` (ENFORCED/CONVENTION/WHEN-SERVER/DEFERRED) + `AGENTS.md` §11–14.
 Product: player-led doctrine adopted 2026-10-08 — `docs/PLAYER_RESEARCH.md` is the evidence record, `AGENTS.md` §15 governs; storyboard/prior docs are hypotheses (H1 supported; H2–H4 open into M010; H5 standing constraint).
@@ -156,3 +156,9 @@ Kernel only: IDs, clock+phases, seeded RNG streams, command/event/effect + appli
 - Risks remaining: if the founder's failure was NOT storage denial (no console access to confirm), the watchdog now surfaces the true error on-page instead of silence — report its exact text.
 - Follow-up (same authorization): inline favicon kills the noise 404; watchdog now captures real error/resource details into the page message; UI-structure tests extended. Awaiting the founder's captured error text.
 - Follow-up 2: founder console showed `GET /app.js 404` — document-relative script src resolved against the `/` mount instead of the file path. Fixed with root-absolute src; regression test asserts served-root script URLs. My earlier curl checks hit the disk path, not the browser-resolved one — recorded as the verification gap.
+
+## CP1 batch: playable start + presentation honesty (2026-10-09, authorized; game/debug + tests only, zero sim changes)
+- Diagnosis B confirmed: `proof-m009.json` is a full replay (setup + funding + 2 days), so loading it leaves day-3 funded state — the founder's t=3360/funded/no-open-levy evidence matches exactly. No stale state, no wiring bug: the scenario meant "prove determinism," not "start playing."
+- Fix: `tests/scenario/proof-cp1-start.json` (setup-only: register/accounts/rels/routines/group/fault/open levy; distinct ids; replay-proof asserts lock the start: fault active, levy open unpaid, t=480). UI scenario button loads it; proof-m009 untouched.
+- Batch: (1) all-duplicate reloads report "already loaded," partials report counts (pure `scenarioLoadSummary`, tested); (2) situations render humanized titles — storylets carry no title/text fields, so no narrative invented (full writing is Phase 2 content); (3) Ask form gains optional Amount (UI refuses non-integers without dispatching; kernel validation untouched); (4) pay/levy/fault defaults derive from the loaded scenario file (`scenarioFormDefaults`, tested), never hardcoded.
+- Verification: suite green (18 unit, 8 proofs); headless real-handler click-through (load/reload/ask/forms/titles); serve checks. Visual paint remains founder-verified.
