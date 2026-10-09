@@ -14,5 +14,6 @@ export function describeQueryContract() {
     'balance/wallet/transactions/ledger_consistent — M003 integer kobo',
     'obligation/obligations/due_soon/overlaps — M003',
     'what_they_remember — M005 summaries only (kinds+subjects+times, never values)',
+    'chats/book/notifications/draft_action — M008 (book carries only said claims; notifications derived+capped)',
   ]);
 }

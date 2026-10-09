@@ -8,6 +8,7 @@ import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GATE_READS } from '../sim/memory/index.js';
 import { validateStoryContent } from '../sim/story/index.js';
+import { validateChatterRules } from '../sim/comms/index.js';
 
 const failures = [];
 let jsonCount = 0;
@@ -49,6 +50,18 @@ try {
   if (serr) failures.push(`story content: ${serr}`);
 } catch (err) {
   failures.push(`story content unreadable: ${err.message}`);
+}
+
+// Chatter rules + chat templates validate the same way: unknown templates or
+// malformed rules fail here, not as silent no-chatter in-game.
+try {
+  const templates = JSON.parse(readFileSync(new URL('../content/strings/chat.json', import.meta.url), 'utf8'));
+  const chatIds = templates.map((t) => t.id);
+  const chatter = JSON.parse(readFileSync(new URL('../content/rules/chatter.json', import.meta.url), 'utf8'));
+  const cerr = validateChatterRules(chatter, chatIds);
+  if (cerr) failures.push(`chatter content: ${cerr}`);
+} catch (err) {
+  failures.push(`chatter content unreadable: ${err.message}`);
 }
 
 if (failures.length > 0) {

@@ -178,6 +178,18 @@ export function createKnowledge(kernel, { disclosure = [] } = {}) {
     };
   });
 
+  // Hearsay intake (M008 rumour spread): records a weaker belief with the
+  // SAME origin_id, and never overwrites an existing belief. Idempotent:
+  // repeat delivery finds the belief present and skips.
+  kernel.onApply('BeliefHeard', (ev) => {
+    const d = ev.data;
+    const existing = (beliefs[d.person] || {})[d.fact];
+    if (existing) return;
+    (beliefs[d.person] = beliefs[d.person] || {})[d.fact] = {
+      value: d.value, certainty: d.certainty, source: 'told', origin_id: d.origin_id, t: ev.t,
+    };
+  });
+
   kernel.onApply('PlayerIdentified', (ev) => { playerId = ev.data.person; });
 
   kernel.onApply('IncentiveNoted', (ev) => {

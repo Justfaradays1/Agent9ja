@@ -11,6 +11,7 @@ import { createKnowledge } from '../sim/knowledge/index.js';
 import { createVerbs } from '../sim/verbs/index.js';
 import { createMemory } from '../sim/memory/index.js';
 import { createStory } from '../sim/story/index.js';
+import { createComms } from '../sim/comms/index.js';
 
 function readJson(url, label, fallback) {
   try {
@@ -37,6 +38,11 @@ export function bootWorld(seed) {
   createStory(kernel, {
     storylets: readJson('../content/story/slice.json', 'storylets', []),
     director: readJson('../content/rules/director.json', 'director rules', null),
+  });
+  createComms(kernel, {
+    knowledge,
+    chatter: readJson('../content/rules/chatter.json', 'chatter rules', []),
+    templates: readJson('../content/strings/chat.json', 'chat templates', []).map((t) => t.id),
   });
   createVerbs(kernel, {
     templates: readJson('../content/obligations/promise-templates.json', 'promise templates', []),

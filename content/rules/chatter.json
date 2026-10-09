@@ -1,0 +1,1 @@
+[{"on_event": "ObligationBroken", "params": {}, "speaker": "npc_musa", "template": "debt_broke"}, {"claim": {"asserted": "somebody no pay wetin dem owe", "fact": "fact_debt_news", "origin_id": "origin_compound"}, "on_event": "ObligationBroken", "params": {}, "speaker": "npc_seyi", "template": "debt_broke"}]

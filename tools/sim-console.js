@@ -6,7 +6,7 @@
 //     [--flags] [--journal [N]] [--trace SEQ] [--snapshot]
 //     [--person ID] [--rel A B] [--balance ID] [--obl ID] [--due [N]]
 //     [--claims] [--card FACT] [--menu ASKER TARGET] [--remember ID] [--truth FACT]
-//     [--situations] [--threads]
+//     [--situations] [--threads] [--chats] [--book] [--notifications]
 import { bootWorld } from './world.js';
 
 const args = process.argv.slice(2);
@@ -60,6 +60,9 @@ while (i < args.length) {
     out.push({ interaction_menu: kernel.query().interaction_menu(x, y) });
   }
   else if (a === '--remember') out.push({ remembers: kernel.query().what_they_remember(args[i++]) });
+  else if (a === '--chats') out.push(kernel.query().chats());
+  else if (a === '--book') out.push({ book: kernel.query().book() });
+  else if (a === '--notifications') out.push({ notifications: kernel.query().notifications() });
   else if (a === '--situations') out.push({ situations: kernel.query().situations() });
   else if (a === '--threads') out.push({ threads: kernel.query().threads() });
   else if (a === '--truth') {

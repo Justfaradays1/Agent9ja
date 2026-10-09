@@ -1,6 +1,6 @@
 # PROGRESS.md — Agent9ja build log
 
-## YOU ARE HERE → M007 done (uncommitted); M008 next only on request
+## YOU ARE HERE → M008 done (uncommitted); M009 next only on request
 
 Standing: `docs/ENGINEERING_DOCTRINE.md` (ENFORCED/CONVENTION/WHEN-SERVER/DEFERRED) + `AGENTS.md` §11–14.
 Product: player-led doctrine adopted 2026-10-08 — `docs/PLAYER_RESEARCH.md` is the evidence record, `AGENTS.md` §15 governs; storyboard/prior docs are hypotheses (H1 supported; H2–H4 open into M010; H5 standing constraint).
@@ -13,7 +13,8 @@ Product: player-led doctrine adopted 2026-10-08 — `docs/PLAYER_RESEARCH.md` is
 | M004 | DONE (2026-10-08, uncommitted) | 101/101 tests; knowledge/verb proofs below |
 | M005 | DONE (2026-10-08, uncommitted) | 118/118 tests (101 prior + 17 new); proofs below |
 | M006 | DONE (2026-10-08, uncommitted) | file persistence contract proven, see M006 notes; re-verified under second authorization (18 save tests) |
-| M007 | DONE (2026-10-08, uncommitted) | storylets + threads + director v1 proven, see M007 notes |
+| M007 | DONE (2026-10-08, commit `58c629b`) | storylets + threads + director v1 proven, see M007 notes |
+| M008 | DONE (2026-10-09, uncommitted) | DMs + compound group + overhearing + book + notifications proven, see M008 notes |
 
 | ID | Status | Proof |
 | M000 | DONE (2026-10-08) | `npm test` green (2/2 + boundary ok); skeleton committed; decisions recorded |
@@ -108,3 +109,12 @@ Kernel only: IDs, clock+phases, seeded RNG streams, command/event/effect + appli
 - Content: `content/story/slice.json` (10 storylets) + `content/rules/director.json`; lint validates both. Console gains --situations/--threads.
 - Bugs caught by tests: duplicated file tail (syntax), double-registered story store, asymmetric test helper, snapshot-vs-stores assertion on rejections, multi-step budget overflow in test advances, real 56-duplicate seed-style expiry hazard (fixed via booking precedent).
 - Risks remaining: default outcomes referencing future-unstable entities fail loud by design; joy cadence deferred; surfacing is query-side only until M008 comms consumes it.
+
+## M008 notes (2026-10-09, no arch rewrite)
+- `sim/comms` (new): open_group/group_add (one compound group, M009 places refine co-presence), dm_tell (volunteered speech asserts speaker belief as-is, authored errors included), dm_request (pre-commitment record, NO favour — formal Ask owns that), draft_action (decline closes request via decline_request; ask prefills only fully-specified choices), chats()/book()/notifications() frozen queries.
+- Chatter: world events (ObligationBroken etc.) become witnessed group messages via content rules; unknown event kinds fail closed. Rumour spread: non-speaker members without a prior belief gain one-step-weaker hearsay (same origin_id); existing beliefs never overwritten/duplicated (reaction skips + applier backstop).
+- Book: group claim-bearing messages with speaker + origin_id; DMs never appear (information boundary). Notifications: derived/prioritized (overdue > due > crisis > request), capped 20, deterministic; no unread-DM section (no read-tracking — inventing it would be dishonest).
+- Bounds: 200/thread, 300/group (oldest evicted), queries return full retained history (caps ARE the bound). Missing comms store in snapshot fails loud (guard against truncation); pre-M008 saves surface via envelope contentMismatch, not silent defaults.
+- Content: `content/rules/chatter.json` + `content/strings/chat.json`; lint validates. Console gains --chats/--book/--notifications. Proof `tests/scenario/proof-m008.json` (6 replay proofs total).
+- Bugs caught by tests: hardcoded `groups.compound` vs stable-id `group_compound` (×3: chatter reaction, book, + test ids), query window slice(-50) hiding retained history, dead Broken branch in notifications (due_soon is future-only — overdue now reads obligations Due directly), cmd_id pattern in test ids, per-command event budget in group-cap test (staggered dues).
+- Suite: all stages green (16 unit files incl. 15 comms tests, 1 save file, 6 replay proofs). Risks remaining: pre-M008 saves need fresh start (documented); H5 standing constraint holds (no stranger DMs, no plaza).
