@@ -26,10 +26,29 @@ function esc(v) {
 }
 
 function send(type, params, actor = 't') {
-  if (!kernel) { log({ status: 'rejected', reason: 'boot or load a world first' }); return; }
-  const r = kernel.dispatch({ cmd_id: cmdId(type), type, actor, params });
-  log({ cmd: type, status: r.status, reason: r.reason ?? null, seqs: r.produced ?? r.firstSeq ?? null });
-  render();
+  if (!kernel) { showResult(false, 'Boot or load a world first.'); return; }
+  // UI-boundary double-submit guard: authoritative idempotency stays in the
+  // kernel, but disabled buttons prevent accidental duplicate commands.
+  const buttons = [...document.querySelectorAll('button')];
+  buttons.forEach((b) => { b.disabled = true; });
+  try {
+    const r = kernel.dispatch({ cmd_id: cmdId(type), type, actor, params });
+    if (r.status === 'applied') {
+      showResult(true, `${type} applied. See what changed below.`);
+    } else {
+      showResult(false, `${type} refused: ${r.reason}`);
+    }
+    log({ cmd: type, status: r.status, reason: r.reason ?? null, seqs: r.produced ?? r.firstSeq ?? null });
+    render();
+  } finally {
+    buttons.forEach((b) => { b.disabled = false; });
+  }
+}
+
+function showResult(ok, text) {
+  const el = $('result');
+  el.className = ok ? 'ok' : 'bad';
+  el.textContent = text;
 }
 
 async function content() {
@@ -57,6 +76,7 @@ async function boot(seed) {
   try {
     kernel = await makeKernel(seed);
     cmdN = 0;
+    showResult(true, 'World ready. Load the CP1 scenario to begin, or act freely.');
     log({ status: 'applied', booted: seed });
     render();
   } catch (err) {
@@ -77,6 +97,36 @@ async function loadScenario() {
   }
 }
 
+// Situation summary: presentation-only reading of existing queries. It
+// invents nothing — every line restates query state and points at the
+// control that acts on it.
+function renderSituation(q) {
+  const w = q.world();
+  const lines = [];
+  if (w.fault) {
+    lines.push(`Transformer fault at ${w.fault.place} — the compound has no light.`);
+  }
+  if (w.levy) {
+    const paid = Object.keys(w.levy.paid);
+    lines.push(`Repair levy ${w.levy.id}: ${paid.length} of ${w.levy.members.length} members paid, ${w.levy.collected} kobo collected, due at t=${w.levy.due_t}.`);
+    if (w.levy.paid.person_tola === undefined) {
+      lines.push('Tola has not paid a share — use Pay my levy share below, or decline to pay and face the consequences.');
+    } else {
+      lines.push('Tola has paid. Advance time to see others pay, or watch what happens at the deadline.');
+    }
+  } else if (w.fault) {
+    lines.push('No levy is open yet — open one below to fund the repair, or do nothing and live with the darkness.');
+  } else {
+    const src = w.resources.light.source;
+    lines.push(src === 'none' || src === 'fault'
+      ? 'No light right now. Routines continue; check the tank and the book.'
+      : `Light is on (${src}). No emergency — advance time, talk to people, or check open threads.`);
+  }
+  const notes = q.notifications();
+  if (notes.length > 0) lines.push(`${notes.length} notification${notes.length === 1 ? '' : 's'} need attention below.`);
+  $('situation').innerHTML = '<ul>' + lines.map((l) => `<li>${esc(l)}</li>`).join('') + '</ul>';
+}
+
 function list(items, fmt) {
   if (!items || items.length === 0) return '<li class="note">none</li>';
   return items.map((x) => `<li>${esc(fmt(x))}</li>`).join('');
@@ -87,6 +137,7 @@ function render() {
   const q = kernel.query();
   const t = q.time();
   $('clock').textContent = `t=${t.minutes} day ${t.day} phase ${t.phase}`;
+  renderSituation(q);
   const w = q.world();
   $('world').innerHTML = `<ul>
     <li>places: ${esc(w.places.join(', '))}</li>
@@ -151,8 +202,9 @@ $('go_save').onclick = () => {
   if (!kernel) return log({ status: 'rejected', reason: 'nothing to save' });
   try {
     const r = adapter.save(val('slot') || 'cp1', kernel.snapshot());
+    showResult(true, `Saved to slot ${val('slot')} (${r.bytes} bytes). Safe to reload the page.`);
     log({ status: 'applied', saved: val('slot'), bytes: r.bytes });
-  } catch (err) { log({ status: 'rejected', reason: err.message }); }
+  } catch (err) { showResult(false, `Save failed: ${err.message}`); log({ status: 'rejected', reason: err.message }); }
   render();
 };
 $('go_load').onclick = async () => {
@@ -162,8 +214,9 @@ $('go_load').onclick = async () => {
     try {
       fresh.restore(loaded.snapshot);
       kernel = fresh;
+      showResult(true, `Loaded ${loaded.source}${loaded.migratedFrom !== null ? ` (migrated from v${loaded.migratedFrom})` : ''}. Continue playing.`);
       log({ status: 'applied', loaded: loaded.source, migratedFrom: loaded.migratedFrom });
-    } catch (err) { log({ status: 'rejected', reason: `restore failed, live world untouched: ${err.message}` }); }
+    } catch (err) { showResult(false, `Load refused: ${err.message}. Live world untouched.`); log({ status: 'rejected', reason: `restore failed, live world untouched: ${err.message}` }); }
   } catch (err) { log({ status: 'rejected', reason: err.message }); }
   render();
 };

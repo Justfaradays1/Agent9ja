@@ -1,6 +1,6 @@
 # PROGRESS.md — Agent9ja build log
 
-## YOU ARE HERE → M010 Phase 1 built, CP1 founder review pending; Phase 2 needs authorization
+## YOU ARE HERE → M010 Phase 1 usability correction built, CP1 re-review pending; Phase 2 needs authorization
 
 Standing: `docs/ENGINEERING_DOCTRINE.md` (ENFORCED/CONVENTION/WHEN-SERVER/DEFERRED) + `AGENTS.md` §11–14.
 Product: player-led doctrine adopted 2026-10-08 — `docs/PLAYER_RESEARCH.md` is the evidence record, `AGENTS.md` §15 governs; storyboard/prior docs are hypotheses (H1 supported; H2–H4 open into M010; H5 standing constraint).
@@ -142,3 +142,9 @@ Kernel only: IDs, clock+phases, seeded RNG streams, command/event/effect + appli
 - Parity proven: bridge boot ≡ Node boot snapshots; adapter envelopes byte-identical to file envelopes; pre-M008 fixture migrates through the adapter; rotation fallback matches. DOM paint has no harness (no browser deps) — CP1 review is the UI test.
 - Suite: all stages green (18 unit files incl. 6 bridge tests, save files, 7 replay proofs). Boundary stage enforces the bridge-only crossing (incl. no `sim/` literal in debug UI).
 - Risks remaining: DOM rendering unverified by automation; `localStorage` quota/eviction behavior untested (single-slot dev use only); server script is dev-only (no auth, localhost).
+
+## M010 Phase 1 usability correction (2026-10-09, same authorization — no sim changes)
+- Founder report: controls/labels visually merged, undifferentiated wall of dev operations. Root cause: equal-weight sections, bare repeated "Send" buttons, unlabeled inputs, dev escape hatches competing with play actions, no result visibility. (The literal pasted concatenation is partly a text-copy artifact of flex rows, but the hierarchy complaint stands on inspection.)
+- Fix (presentation only): situation-first panel with query-derived next-step pointers; grouped fieldsets with legends; action-specific button labels; every input inside a `<label>`; Advanced `<details>` disclosure for fault/routine/raw; result banner live region + save/load feedback; UI double-submit guard (kernel idempotency unchanged); focus states; mobile-safe widths.
+- Verification: bridge UI-structure tests (labels, disclosure, boundary literal), tag/ID/reference structure check, full suite green. No browser paint automation available (no browser, no harness deps) — visual confirmation is the founder re-review.
+- Risks remaining: same as Phase 1, plus: situation pointers cover levy/fault/light/threads only (new situations need pointer updates with content).

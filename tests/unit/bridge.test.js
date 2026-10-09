@@ -141,6 +141,45 @@ describe('adapter parity: same protocol as the file layer', () => {
   });
 });
 
+describe('debug UI structure: labels, disclosure, boundaries (not paint)', () => {
+  // No browser harness exists (no browser deps per doctrine), so these assert
+  // document structure, not rendering. They guard the exact regressions the
+  // founder reported: merged controls, unlabeled inputs, missing hierarchy.
+  const html = readFileSync(join(ROOT, 'game/debug/index.html'), 'utf8');
+  const app = readFileSync(join(ROOT, 'game/debug/app.js'), 'utf8');
+  it('every input has an associated label; every button names its action', () => {
+    const inputIds = [...html.matchAll(/<input[^>]*id="([^"]+)"/g)].map((m) => m[1]);
+    assert.ok(inputIds.length > 10, 'forms exist to check');
+    for (const id of inputIds) {
+      assert.ok(html.includes(`<label`) && new RegExp(`<label[^>]*>[^<]*<input[^>]*id="${id}"`).test(html),
+        `input #${id} must sit inside a <label>`);
+    }
+    const buttons = [...html.matchAll(/<button[^>]*>([^<]*)<\/button>/g)].map((m) => m[1].trim());
+    assert.ok(buttons.length > 10, 'buttons exist to check');
+    for (const text of buttons) {
+      assert.ok(text.length >= 3, `button text must be descriptive, got ${JSON.stringify(text)}`);
+    }
+    const bareSends = buttons.filter((t) => t === 'Send');
+    assert.equal(bareSends.length, 0, 'no bare "Send" buttons: each names its action');
+  });
+  it('situation-first hierarchy with disclosed advanced controls', () => {
+    assert.ok(html.includes('viewport'), 'mobile viewport meta present');
+    assert.ok(html.includes('What is happening'), 'situation section first and explicit');
+    assert.ok(html.includes('<details'), 'advanced controls behind a disclosure');
+    assert.ok(/raw command/i.test(html) && html.includes('developer'), 'raw box labelled advanced/developer');
+    assert.ok(html.includes('role="status"'), 'result banner is a live region');
+    assert.ok(html.includes(':focus-visible'), 'keyboard focus states defined');
+    assert.ok(app.includes('disabled = true'), 'double-submit guard present');
+    assert.ok(app.includes('renderSituation'), 'situation summary rendered from queries');
+  });
+  it('debug UI keeps the bridge-only boundary (no direct authoritative imports)', () => {
+    for (const [name, src] of [['index.html', html], ['app.js', app]]) {
+      assert.ok(!src.includes('sim/'), `${name} must not reference authoritative modules directly`);
+      assert.ok(!src.includes("require("), `${name} must not use require`);
+    }
+  });
+});
+
 describe('boot parity: bridge boot equals Node boot for identical scripts', () => {
   it('same seed + same scenario steps = identical snapshots', () => {
     const sc = JSON.parse(readFileSync(join(ROOT, 'tests/scenario/proof-m009.json'), 'utf8'));
