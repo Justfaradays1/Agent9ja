@@ -15,7 +15,7 @@ import { createHash } from 'node:crypto';
 import { bootWorld as bootNodeWorld } from '../../tools/world.js';
 import { saveSlot, loadSlot } from '../../sim/save/index.js';
 import { bootWorld, applyScenario } from '../../game/bridge/world-client.js';
-import { createAdapter, SCHEMA_VERSION } from '../../game/bridge/save-adapter.js';
+import { createAdapter, SCHEMA_VERSION, platformStorage } from '../../game/bridge/save-adapter.js';
 import { sha256Hex } from '../../game/bridge/sha256.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -177,6 +177,38 @@ describe('debug UI structure: labels, disclosure, boundaries (not paint)', () =>
       assert.ok(!src.includes('sim/'), `${name} must not reference authoritative modules directly`);
       assert.ok(!src.includes("require("), `${name} must not use require`);
     }
+  });
+});
+
+describe('storage-denied survival: the page must never die on blocked storage (P0)', () => {
+  // Root cause of the dead-controls report: top-level window.localStorage
+  // access threw where browsers deny it, killing the module before any
+  // handler attached. Storage is now optional at every touch point.
+  it('platformStorage never throws; null means saving unavailable', () => {
+    assert.equal(platformStorage(), null, 'Node has no window: null, not a throw');
+  });
+  it('adapter over a denying store fails loudly per call, not at import', () => {
+    const denying = {
+      getItem: () => { throw new Error('denied'); },
+      setItem: () => { throw new Error('denied'); },
+      removeItem: () => { throw new Error('denied'); },
+      key: () => null,
+      get length() { throw new Error('denied'); },
+    };
+    const adapter = createAdapter(denying); // must not throw here
+    const { kernel } = bootWorld({ seed: 'deny-seed', content: readContent() });
+    const snap = kernel.snapshot(); // valid envelope input: reaches storage
+    assert.throws(() => adapter.save('s', snap), /denied/);
+    assert.throws(() => adapter.load('s'), /denied/);
+  });
+  it('debug UI degrades instead of dying: watchdog + lazy storage + banner paths', () => {
+    const html = readFileSync(join(ROOT, 'game/debug/index.html'), 'utf8');
+    const app = readFileSync(join(ROOT, 'game/debug/app.js'), 'utf8');
+    assert.ok(!app.includes('window.localStorage'), 'app.js must not touch storage except via platformStorage');
+    assert.ok(app.includes('platformStorage'), 'lazy safe accessor in use');
+    assert.ok(app.includes('Saving is unavailable in this browser'), 'unavailable path has a message');
+    assert.ok(app.includes('window.__cp1_boot_ok = true'), 'boot-ok flag set after handlers attach');
+    assert.ok(html.includes('__cp1_boot_ok'), 'watchdog present: silent module death becomes a visible message');
   });
 });
 

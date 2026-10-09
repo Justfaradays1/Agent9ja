@@ -177,6 +177,22 @@
 </div>
 </details>
 
+<script>
+// Boot watchdog: module scripts can die silently (blocked storage, failed
+// import), leaving visible-but-dead controls. app.js sets window.__cp1_boot_ok
+// after attaching every handler; if it never arrives, say so on the page
+// instead of leaving a mystery. Classic script, runs before the module.
+window.__cp1_boot_ok = false;
+setTimeout(function () {
+  if (!window.__cp1_boot_ok) {
+    var el = document.getElementById('result');
+    if (el) {
+      el.className = 'bad';
+      el.textContent = 'The game code failed to start (storage blocked? server unreachable?). The buttons below cannot work until this is fixed — try allowing site data and reloading.';
+    }
+  }
+}, 4000);
+</script>
 <script type="module" src="./app.js"></script>
 </body>
 </html>

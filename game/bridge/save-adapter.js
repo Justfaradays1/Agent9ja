@@ -13,6 +13,21 @@ import { sha256Hex } from './sha256.js';
 export { SCHEMA_VERSION };
 export { sha256Hex as adapterSha256 };
 
+// Never throws, even where window brass is absent (Node) or storage access
+// is denied (blocked cookies/site data — which throws on property access in
+// some browsers). A null return means saving is unavailable; the game itself
+// must never depend on storage to boot or play.
+export function platformStorage() {
+  try {
+    if (typeof window === 'undefined' || !window) return null;
+    const s = window.localStorage;
+    if (!s || typeof s.getItem !== 'function') return null;
+    return s;
+  } catch {
+    return null;
+  }
+}
+
 const SLOT_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const keyOf = (slot, suffix) => `${slot}.json${suffix}`;
 

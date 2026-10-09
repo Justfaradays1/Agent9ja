@@ -4,13 +4,20 @@
 // directly (boundary-checked). All world changes go through kernel.dispatch;
 // every result, including rejections with reasons, is shown in the log.
 import { bootWorld, applyScenario } from '../bridge/world-client.js';
-import { createAdapter } from '../bridge/save-adapter.js';
+import { createAdapter, platformStorage } from '../bridge/save-adapter.js';
 
 const $ = (id) => document.getElementById(id);
 const val = (id) => $(id).value.trim();
 let kernel = null;
 let cmdN = 0;
-const adapter = createAdapter(window.localStorage);
+// Storage is optional: a denied/blocked store must degrade to no-saving,
+// never to a dead page (P0: top-level localStorage access killed the module
+// outright when browsers denied it — handlers never attached).
+const adapter = (() => {
+  const store = platformStorage();
+  return store ? createAdapter(store) : null;
+})();
+const noSave = () => showResult(false, 'Saving is unavailable in this browser (storage blocked). The game plays fully without it.');
 const cmdId = (type) => `ui_${cmdN++}_${type}`;
 
 function log(entry) {
@@ -80,6 +87,7 @@ async function boot(seed) {
     log({ status: 'applied', booted: seed });
     render();
   } catch (err) {
+    showResult(false, `Could not start: ${err.message}. Check the server is running and reload.`);
     log({ status: 'rejected', reason: `boot failed: ${err.message}` });
   }
 }
@@ -164,7 +172,11 @@ function render() {
   $('book').innerHTML = '<ul>' + list(q.book(), (b) => `${b.fact} = ${b.asserted} (said by ${b.speaker}, ${b.origin_id})`) + '</ul>';
   $('notifications').innerHTML = '<ul>' + list(q.notifications(), (n) => `${n.kind} ref=${n.ref}`) + '</ul>';
   $('requests').textContent = 'open requests: ' + q.requests({ status: 'open' }).slice(0, 6).map((r) => r.id).join(', ');
-  $('slots').textContent = 'slots: ' + adapter.slots().join(', ');
+  try {
+    $('slots').textContent = 'slots: ' + (adapter ? adapter.slots().join(', ') : '(saving unavailable)');
+  } catch {
+    $('slots').textContent = 'slots: (saving unavailable)';
+  }
   $('journal').innerHTML = '<ul>' + q.journal(15).slice().reverse().map((e) =>
     `<li>#${e.seq} ${esc(e.kind)} ${esc(e.data && (e.data.reason || e.data.resolution || e.data.id || ''))}</li>`).join('') + '</ul>';
 }
@@ -199,7 +211,8 @@ $('go_raw').onclick = () => {
 };
 
 $('go_save').onclick = () => {
-  if (!kernel) return log({ status: 'rejected', reason: 'nothing to save' });
+  if (!kernel) return showResult(false, 'Nothing to save yet — boot or load first.');
+  if (!adapter) return noSave();
   try {
     const r = adapter.save(val('slot') || 'cp1', kernel.snapshot());
     showResult(true, `Saved to slot ${val('slot')} (${r.bytes} bytes). Safe to reload the page.`);
@@ -208,6 +221,7 @@ $('go_save').onclick = () => {
   render();
 };
 $('go_load').onclick = async () => {
+  if (!adapter) return noSave();
   try {
     const loaded = adapter.load(val('slot') || 'cp1');
     const fresh = await makeKernel('loaded');
@@ -217,9 +231,16 @@ $('go_load').onclick = async () => {
       showResult(true, `Loaded ${loaded.source}${loaded.migratedFrom !== null ? ` (migrated from v${loaded.migratedFrom})` : ''}. Continue playing.`);
       log({ status: 'applied', loaded: loaded.source, migratedFrom: loaded.migratedFrom });
     } catch (err) { showResult(false, `Load refused: ${err.message}. Live world untouched.`); log({ status: 'rejected', reason: `restore failed, live world untouched: ${err.message}` }); }
-  } catch (err) { log({ status: 'rejected', reason: err.message }); }
+  } catch (err) { showResult(false, `Load failed: ${err.message}`); log({ status: 'rejected', reason: err.message }); }
   render();
 };
-$('go_delete').onclick = () => { try { adapter.remove(val('slot') || 'cp1'); log({ status: 'applied', deleted: val('slot') }); } catch (err) { log({ status: 'rejected', reason: err.message }); } render(); };
+$('go_delete').onclick = () => {
+  if (!adapter) return noSave();
+  try { adapter.remove(val('slot') || 'cp1'); log({ status: 'applied', deleted: val('slot') }); } catch (err) { log({ status: 'rejected', reason: err.message }); } render();
+};
 
 boot('m009-proof');
+// Boot-ok flag for the inline watchdog in index.html: set only after every
+// handler above is attached, so a silent module death becomes a visible
+// message instead of mysteriously dead controls.
+window.__cp1_boot_ok = true;

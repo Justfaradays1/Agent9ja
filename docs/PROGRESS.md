@@ -1,6 +1,6 @@
 # PROGRESS.md — Agent9ja build log
 
-## YOU ARE HERE → M010 Phase 1 usability correction built, CP1 re-review pending; Phase 2 needs authorization
+## YOU ARE HERE → M010 Phase 1 interaction repair built, CP1 re-review pending; Phase 2 needs authorization
 
 Standing: `docs/ENGINEERING_DOCTRINE.md` (ENFORCED/CONVENTION/WHEN-SERVER/DEFERRED) + `AGENTS.md` §11–14.
 Product: player-led doctrine adopted 2026-10-08 — `docs/PLAYER_RESEARCH.md` is the evidence record, `AGENTS.md` §15 governs; storyboard/prior docs are hypotheses (H1 supported; H2–H4 open into M010; H5 standing constraint).
@@ -148,3 +148,9 @@ Kernel only: IDs, clock+phases, seeded RNG streams, command/event/effect + appli
 - Fix (presentation only): situation-first panel with query-derived next-step pointers; grouped fieldsets with legends; action-specific button labels; every input inside a `<label>`; Advanced `<details>` disclosure for fault/routine/raw; result banner live region + save/load feedback; UI double-submit guard (kernel idempotency unchanged); focus states; mobile-safe widths.
 - Verification: bridge UI-structure tests (labels, disclosure, boundary literal), tag/ID/reference structure check, full suite green. No browser paint automation available (no browser, no harness deps) — visual confirmation is the founder re-review.
 - Risks remaining: same as Phase 1, plus: situation pointers cover levy/fault/light/threads only (new situations need pointer updates with content).
+
+## M010 Phase 1 interaction repair (2026-10-09, P0 — no sim changes)
+- Founder report: visible controls, nothing clickable. Root cause (proven by execution, not inspection): top-level `window.localStorage` access in `app.js` throws where browsers deny storage — the module died at import, zero handlers attached. It was the only synchronous top-level environment touch; everything else was function defs or internally-caught async boot. (CSS gaps were innocent: verified `gap` present; pasted concatenation is a text-copy artifact.)
+- Fix: `platformStorage()` (never throws; null = no saving) + lazy adapter; game fully playable without storage with an explicit message; boot failures set the banner (not just the log); inline watchdog turns any future silent module death into a visible page message with the boot-ok flag set after handlers attach.
+- Verification: headless real-module execution (load clean, all 24 buttons wired, scenario/advance/pay/duplicate-pay decline/boot all behave; denied-storage run: import survives, game plays, save degrades with message); 3 new regression tests; full suite green. No browser paint automation exists — visual confirmation is the founder re-review.
+- Risks remaining: if the founder's failure was NOT storage denial (no console access to confirm), the watchdog now surfaces the true error on-page instead of silence — report its exact text.
