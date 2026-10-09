@@ -19,6 +19,12 @@ const TAG_RE = /^[a-z][a-z0-9_]{0,31}$/;
 
 const WEAKER = { sure: 'likely', likely: 'rumour', rumour: 'rumour' };
 
+// Canonical empty comms state, owned here so migration (sim/save) and tests
+// construct exactly what setState accepts — no shape drift, no invented data.
+export function emptyCommsState() {
+  return { messages: {}, groups: {}, dmThreads: {} };
+}
+
 export function validateChatterRules(rules, templates) {
   if (!Array.isArray(rules)) return 'chatter rules must be an array';
   for (const [i, r] of rules.entries()) {

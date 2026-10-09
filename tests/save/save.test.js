@@ -226,7 +226,9 @@ describe('migrations: ordered, tested, no invented values', () => {
     const fixture = JSON.parse(readFileSync(new URL('./fixtures/v0-minimal.json', import.meta.url), 'utf8'));
     const migrated = migrateSnapshot({ ...fixture });
     assert.equal(migrated.v, SCHEMA_VERSION);
-    assert.deepEqual(migrated.stores, {});
+    // v0 -> v1 fills stores {}; v1 -> v2 injects the canonical empty comms
+    // store (M008). Nothing else is invented.
+    assert.deepEqual(migrated.stores, { comms: { messages: {}, groups: {}, dmThreads: {} } });
     assert.equal(migrated.seed, 'fixture-seed');
     // Bare kernel has no module stores: migrated snapshot restores cleanly.
     const bare = createKernel({ seed: 'x' });
@@ -357,6 +359,117 @@ describe('settled obligations and post-load disclosure', () => {
     assert.equal(fresh.dispatch({ cmd_id: 'cmd_ask1', type: 'ask', actor: 't', params: askParams }).status, 'applied');
     assert.deepEqual(fresh.query().claims({ fact: 'fact_gate_code' }), live.query().claims({ fact: 'fact_gate_code' }));
     assert.equal(fresh.snapshot(), live.snapshot());
+  });
+});
+
+describe('pre-M008 compatibility: genuine M007 fixture migrates and continues', () => {
+  // Fixture provenance: tests/save/fixtures/pre-m008-save.json is a REAL
+  // envelope produced by the actual M007 code (commit 58c629b) via
+  // bootWorld('fixture-m007') + register 3 persons/accounts, relationship +
+  // tag, partial-settled Debt, broken Debt (+12 steps: scars), fact + belief,
+  // identify_player, ask, one open crisis thread. Envelope schema 1 /
+  // content 1, snapshot v1, 8 stores (no comms), 34 journal events. It is
+  // checked in precisely so this test cannot pass on a faked current-minus-
+  // comms snapshot: only true v1 payloads exercise the migration chain.
+  function loadFixture(t) {
+    const dir = freshTmp(t);
+    const text = readFileSync(new URL('./fixtures/pre-m008-save.json', import.meta.url), 'utf8');
+    assert.equal(JSON.parse(text).schema, 1, 'fixture must stay a genuine v1 envelope');
+    writeFileSync(join(dir, 'old.json'), text);
+    const loaded = loadSlot(dir, 'old');
+    assert.equal(loaded.migratedFrom, 1, 'v1 save must travel the migration path');
+    return loaded;
+  }
+
+  it('old save loads: state preserved, comms starts empty', (t) => {
+    const loaded = loadFixture(t);
+    assert.equal(JSON.parse(loaded.snapshot).v, SCHEMA_VERSION);
+    assert.deepEqual(JSON.parse(loaded.snapshot).stores.comms, { messages: {}, groups: {}, dmThreads: {} });
+    const { kernel: fresh } = bootWorld('old-seed');
+    fresh.restore(loaded.snapshot);
+    const q = fresh.query();
+    // Authoritative M007 state intact: money, Due + Broken + scars, tag, claim, thread.
+    assert.equal(q.balance('person_tola'), 800000 - 30000);
+    assert.equal(q.obligation('obl_rent').status, 'Due');
+    assert.equal(q.obligation('obl_rent').paid, 30000);
+    assert.equal(q.obligation('obl_old').status, 'Broken');
+    assert.deepEqual(q.tags('person_tola', 'npc_tobi'), ['housed_me']);
+    assert.ok(q.claims({ fact: 'fact_gate_code' }).length >= 1);
+    assert.ok(q.what_they_remember('person_tola').some((m) => m.kind === 'broke_promise' && m.subject === 'npc_musa'));
+    assert.equal(q.threads({ status: 'open' }).length, 1);
+    // Communication state starts empty — nothing invented, nothing lost.
+    assert.deepEqual(q.chats(), { dms: [], groups: [] });
+    assert.deepEqual(q.book(), []);
+  });
+
+  it('migrated world continues deterministically (twin loads, same script)', (t) => {
+    const loaded = loadFixture(t);
+    const run = (seed) => {
+      const { kernel } = bootWorld(seed);
+      kernel.restore(loaded.snapshot);
+      const d = (id, type, params) => {
+        const r = kernel.dispatch({ cmd_id: id, type, actor: 't', params });
+        assert.equal(r.status, 'applied', `${id}: ${r.reason || 'ok'}`);
+      };
+      d('cmd_c1', 'settle_obligation', { obligation: 'obl_rent', amount: 70000 });
+      d('cmd_c2', 'open_group', { group_id: 'group_compound', members: ['person_tola', 'npc_tobi', 'npc_musa'] });
+      d('cmd_c3', 'advance_time', { steps: 10 });
+      return kernel.snapshot();
+    };
+    assert.equal(run('twin-a'), run('twin-b'), 'migration + continuation must be deterministic');
+  });
+
+  it('current saves write the new schema and need no migration', (t) => {
+    const { kernel } = bootWorld('newschema-seed');
+    assert.equal(JSON.parse(createEnvelope(kernel.snapshot())).schema, SCHEMA_VERSION);
+    const dir = freshTmp(t);
+    saveSlot(dir, 's', kernel.snapshot());
+    assert.equal(loadSlot(dir, 's').migratedFrom, null);
+  });
+});
+
+describe('atomic restore: failed restores leave the live kernel byte-identical', () => {
+  it('missing store fails loud before mutation (kernel stays strict)', (t) => {
+    const { kernel } = bootWorld('strict-seed');
+    const before = kernel.snapshot();
+    const snap = JSON.parse(before);
+    delete snap.stores.comms;
+    assert.throws(() => kernel.restore(JSON.stringify(snap)), /missing_store_in_snapshot: comms/);
+    assert.equal(kernel.snapshot(), before, 'failed restore must not mutate live state');
+    assert.equal(kernel.dispatch({ cmd_id: 'cmd_still_alive', type: 'advance_time', actor: 't', params: { steps: 1 } }).status, 'applied');
+  });
+
+  it('garbage, wrong version, and misshapen snapshots fail clearly + unchanged', (t) => {
+    const { kernel } = bootWorld('malformed-seed');
+    const before = kernel.snapshot();
+    assert.throws(() => kernel.restore('{not json'), /bad_snapshot: snapshot is not valid JSON/);
+    assert.throws(() => kernel.restore(JSON.stringify({ ...JSON.parse(before), v: 99 })), /bad_snapshot_version: 99/);
+    const noJournal = JSON.parse(before);
+    delete noJournal.journal;
+    assert.throws(() => kernel.restore(JSON.stringify(noJournal)), /bad_snapshot: snapshot missing journal/);
+    assert.equal(kernel.snapshot(), before, 'all failed restores leave the kernel alone');
+  });
+
+  it('mid-apply store failure rolls back (original error preserved)', (t) => {
+    const kernel = createKernel({ seed: 'rollback-seed' });
+    let okState = { n: 0 };
+    let fail = false;
+    kernel.registerStore('ok_store', {
+      getState: () => ({ ...okState }),
+      setState: (s) => { okState = { ...s }; },
+    });
+    kernel.registerStore('evil_store', {
+      getState: () => ({}),
+      setState: () => { if (fail) throw new Error('evil_setState_boom'); },
+    });
+    const before = kernel.snapshot();
+    const incoming = JSON.parse(before);
+    incoming.flags = { attempt: 'doomed' }; // valid shape: passes validation, dies in apply
+    fail = true;
+    assert.throws(() => kernel.restore(JSON.stringify(incoming)), /evil_setState_boom/);
+    fail = false;
+    assert.equal(kernel.snapshot(), before, 'rollback must restore the exact prior state');
+    assert.deepEqual(kernel.query().flags(), {}, 'flags change was rolled back too');
   });
 });
 

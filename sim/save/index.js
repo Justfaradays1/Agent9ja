@@ -12,8 +12,14 @@
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync, renameSync, readFileSync, existsSync, unlinkSync, openSync, fsyncSync, closeSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { SNAPSHOT_VERSION } from '../kernel/pipeline.js';
+import { emptyCommsState } from '../comms/index.js';
 
-export const SCHEMA_VERSION = 1;
+// Snapshot structural version: single source is the kernel (it speaks exactly
+// one version and stays strict). CONTENT_VERSION is untouched by this patch:
+// no content files changed — the missing comms store is snapshot structure
+// (schema), not content data, so bumping content would be mechanical noise.
+export const SCHEMA_VERSION = SNAPSHOT_VERSION;
 export const CONTENT_VERSION = 1;
 // Autosave hook points. Triggers are wired later (M010+); the API exists now.
 export const AUTOSAVE_POINTS = ['phaseBoundary', 'afterInteraction', 'onBackground'];
@@ -47,7 +53,17 @@ function migrateV0toV1(obj) {
   };
 }
 
-const MIGRATIONS = { 0: migrateV0toV1 };
+// v1 -> v2 (M008 added the comms store): pre-M008 snapshots have no comms
+// fragment. Inject the canonical empty state owned by sim/comms. Only fills
+// when absent — a present store is never overwritten — and nothing else is
+// touched, so player state passes through byte-identical.
+function migrateV1toV2(obj) {
+  const stores = { ...(obj.stores ?? {}) };
+  if (!('comms' in stores)) stores.comms = emptyCommsState();
+  return { ...obj, v: 2, stores };
+}
+
+const MIGRATIONS = { 0: migrateV0toV1, 1: migrateV1toV2 };
 
 export function migrateSnapshot(obj) {
   if (typeof obj?.v === 'number' && obj.v > SCHEMA_VERSION) {

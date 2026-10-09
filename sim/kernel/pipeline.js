@@ -13,6 +13,11 @@ import { createRng } from './rng.js';
 import { createClock } from './clock.js';
 
 export const CASCADE_MAX = 8;
+// Snapshot structural version, owned here (single source; sim/save aliases it
+// as SCHEMA_VERSION for the envelope). v2 = v1 + comms store (M008). The
+// kernel speaks exactly one version and stays strict: old snapshots arrive
+// via sim/save migration, never via lenient restore.
+export const SNAPSHOT_VERSION = 2;
 // Doctrine §1/§9: per-command event budget. A single command may not flood the
 // journal: breadth cap complements the depth cap. Starting bound; retune with
 // a test if M003+ workloads legitimately need more.
@@ -225,7 +230,7 @@ export function createKernel({ seed = 'dev-seed', stepMinutes } = {}) {
     const storeStates = {};
     for (const [name, api] of stores) storeStates[name] = api.getState();
     return JSON.stringify(sortKeys({
-      v: 1, seed: rng.getState().rootSeed,
+      v: SNAPSHOT_VERSION, seed: rng.getState().rootSeed,
       clock: clock.getState(),
       rng: rng.getState(),
       flags: state.flags,
@@ -236,9 +241,7 @@ export function createKernel({ seed = 'dev-seed', stepMinutes } = {}) {
     }));
   }
 
-  function restore(json) {
-    const s = JSON.parse(json);
-    if (s.v !== 1) throw new Error(`bad_snapshot_version: ${s.v}`);
+  function applySnapshot(s) {
     clock.setState(s.clock);
     rng.setState(s.rng);
     state.flags = s.flags;
@@ -246,8 +249,52 @@ export function createKernel({ seed = 'dev-seed', stepMinutes } = {}) {
     state.seen = s.seen;
     seq = s.seq;
     for (const [name, api] of stores) {
-      if (!s.stores || !(name in s.stores)) throw new Error(`missing_store_in_snapshot: ${name}`);
       api.setState(s.stores[name]);
+    }
+  }
+
+  function validateSnapshotShape(s) {
+    if (!s || typeof s !== 'object' || Array.isArray(s)) {
+      throw new Error('bad_snapshot: snapshot must be an object');
+    }
+    if (s.v !== SNAPSHOT_VERSION) {
+      throw new Error(`bad_snapshot_version: ${s.v} (code speaks ${SNAPSHOT_VERSION}; migrate old saves through sim/save)`);
+    }
+    for (const k of ['clock', 'rng', 'flags', 'journal', 'seen', 'seq', 'stores']) {
+      if (!(k in s)) throw new Error(`bad_snapshot: snapshot missing ${k}`);
+    }
+    if (!Array.isArray(s.journal)) throw new Error('bad_snapshot: journal is not an array');
+    if (typeof s.seq !== 'number') throw new Error('bad_snapshot: seq must be a number');
+    if (!s.stores || typeof s.stores !== 'object') throw new Error('bad_snapshot: stores must be an object');
+    for (const [name] of stores) {
+      if (!(name in s.stores)) throw new Error(`missing_store_in_snapshot: ${name}`);
+    }
+  }
+
+  function restore(json) {
+    let s;
+    try {
+      s = JSON.parse(json);
+    } catch {
+      throw new Error('bad_snapshot: snapshot is not valid JSON');
+    }
+    // Validate everything checkable BEFORE touching live state: version,
+    // required keys, and every registered store present.
+    validateSnapshotShape(s);
+    // Atomicity: a store setState can still throw mid-apply, so capture the
+    // live state first (one canonical snapshot; restores are rare and saves
+    // are KBs, so a single full copy is the bounded-safe option) and roll
+    // back on any failure. A failed restore leaves the kernel byte-identical.
+    const backup = snapshot(); // throws NotQuiesced mid-step, before mutation
+    try {
+      applySnapshot(s);
+    } catch (err) {
+      try {
+        applySnapshot(JSON.parse(backup)); // self-produced: always applies
+      } catch (rollbackErr) {
+        throw new Error(`restore_failed_and_rollback_failed: ${err.message} | rollback: ${rollbackErr.message}`);
+      }
+      throw err;
     }
   }
 
